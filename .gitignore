@@ -103,6 +103,8 @@ Thumbs.db
 *.tmp
 *.temp
 skills-lock.json
+artifacts/
+.dam-deploy/
 
 # Temporary visualizations
 temp_visualizations/

@@ -34,16 +34,16 @@ USAGE:
     ```
 """
 
-# Import tools from the tools folder
-from .tools import (
-    IBMQuantumTool,
-    IBMQuantumStatusTool,
-    IBMQuantumInfoTool,
-    IBMQuantumJobTool,
-    QuantumDeveloperClient,
-    QuantumStatusClient,
-    QuantumComputingClient,
-)
+# Load framework tools only when requested. The deterministic experiment engine
+# is also used by the DAM kit, which does not need BeeAI or Agent Stack.
+def __getattr__(name):
+    if name in __all__:
+        from . import tools
+
+        value = getattr(tools, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     # IBM Quantum Tools

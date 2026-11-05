@@ -1,0 +1,23 @@
+[project]
+name = "quantum-lab-dam"
+version = "0.1.0"
+description = "Native DAM tools for Quantum Lab and IBM Quantum Platform"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "qiskit>=2.2,<3",
+    "qiskit-ibm-runtime>=0.44,<1",
+    "qiskit-qasm3-import>=0.6,<1",
+    "matplotlib>=3.9,<4",
+    "numpy>=2,<3",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "jsonschema>=4,<5", "pyyaml>=6,<7", "ruff>=0.14,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "../src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"

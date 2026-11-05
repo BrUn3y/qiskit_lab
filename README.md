@@ -1,334 +1,127 @@
-<div align="center">
+# ⚛️ Quantum Lab — DAM starter kit
 
-# ⚛️ Quantum Lab Agent System
+Tu laboratorio cuántico en [DAM](https://dam.res.ibm.com/), conectado a **IBM Quantum Platform** mediante Qiskit Runtime y `SamplerV2`.
 
-### A complete multi-agent workspace for IBM Quantum
-
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![IBM Granite](https://img.shields.io/badge/Model-Granite_4.2_8B-6929C4)](https://www.ibm.com/granite)
-[![A2A](https://img.shields.io/badge/Protocol-A2A-0F62FE)](https://github.com/a2aproject/A2A)
-[![IBM Quantum](https://img.shields.io/badge/Backend-IBM_Quantum-052FAD)](https://quantum.cloud.ibm.com/)
-
-Generate quantum code, inspect live IBM Quantum backends, execute circuits on real
-hardware, and retrieve job results through one coordinated interface.
-
-[Quick start](#-quick-start) · [Architecture](#-architecture) · [Try it](#-try-it) · [Repositories](#-public-agent-repositories)
-
-</div>
-
----
-
-## Overview
-
-This repository contains the complete multi-agent system. The **Quantum Lab Agent** is the main entry point: it coordinates the Developer, Status, Computing, and development-stage Experiment agents through the Agent-to-Agent protocol.
-
-Local inference uses **IBM Granite 4.2 8B** through Ollama by default.
-
-> [!IMPORTANT]
-> Full functionality requires all five agents to be running. Start the four specialized agents before the Lab Agent, or simply use `./start_all.sh`.
-
-| Agent | Responsibility | Port | Public repository |
-|---|---|:---:|---|
-| 🎯 **Quantum Lab Agent** | Main orchestrator coordinating all agents | `8000` | [quantum_lab_agent](https://github.com/BrUn3y/quantum_lab_agent) |
-| 💻 **Quantum Developer Agent** | Code generation specialist | `8001` | [quantum-developer-agent](https://github.com/BrUn3y/quantum-developer-agent) |
-| 📊 **Quantum Status Agent** | Status monitoring specialist | `8002` | [quantum-status-agent](https://github.com/BrUn3y/quantum-status-agent) |
-| ⚡ **Quantum Computing Agent** | Circuit execution specialist | `8003` | [quantum-computing-agent](https://github.com/BrUn3y/quantum-computing-agent) |
-| 🧪 **Quantum Experiment Agent (Development)** | Hybrid experiment and optimization specialist | `8004` | [quantum-experiment-agent](https://github.com/BrUn3y/quantum-experiment-agent) |
-
-## 🎬 Demo
-
-<p align="center">
-  <img src="docs/images/quantum-lab-demo.gif" alt="Quantum Lab Agent generating and executing a Grover circuit in Agent Stack" width="960">
-</p>
-
-<p align="center"><em>Grover circuit generation, coordinated execution, measurement results, and circuit visualization in Agent Stack Canvas.</em></p>
-
-### QAOA experiment on real IBM Quantum hardware
-
-<p align="center">
-  <img src="docs/images/quantum-experiment-real-hardware.gif" alt="QAOA Max-Cut experiment optimized locally, submitted to real IBM Quantum hardware, and visualized in Agent Stack" width="960">
-</p>
-
-<p align="center"><em>End-to-end QAOA Max-Cut: exact classical validation, experiment Canvas, execution on <code>ibm_marrakesh</code>, tagged Job ID, and live results from 1,024 shots.</em></p>
-
-```text
-Run the QAOA Max-Cut experiment on a 5-node graph and execute the optimized circuit once on the least busy real IBM Quantum backend with 1024 shots. Always create a new job and return the backend name and Job ID.
-```
-
-## 🏗️ Architecture
+Versión privada derivada de [BrUn3y/quantum_lab_agent](https://github.com/BrUn3y/quantum_lab_agent), commit base `9dfdc42`. Conserva los cinco agentes originales y adapta sus funciones a un agente nativo de DAM. Reutiliza directamente el motor QAOA y los renderizadores de topología y resultados. La instalación anterior está en [README.legacy.md](README.legacy.md).
 
 ```mermaid
-flowchart TB
-    USER([User]) <-->|Request / response| LAB["Quantum Lab Agent<br/>:8000<br/><small>BeeAI orchestration · IBM Granite 4.2</small>"]
-
-    LAB -->|A2A| DEV["Quantum Developer Agent<br/>:8001<br/><small>QASM and Qiskit code</small>"]
-    LAB -->|A2A| STATUS["Quantum Status Agent<br/>:8002<br/><small>Backends and jobs</small>"]
-    LAB -->|A2A| COMPUTE["Quantum Computing Agent<br/>:8003<br/><small>Fresh quantum jobs</small>"]
-    LAB -->|A2A| EXPERIMENT["Quantum Experiment Agent<br/>:8004 · Development<br/><small>QAOA and VQE studies</small>"]
-
-    EXPERIMENT -.->|Delegates real execution| COMPUTE
-    STATUS -->|Qiskit| IBMQ["IBM Quantum Platform<br/><small>Live backends and real QPUs</small>"]
-    COMPUTE -->|Qiskit| IBMQ
-
-    classDef user fill:#f4f4f4,stroke:#525252,color:#161616,stroke-width:1px;
-    classDef orchestrator fill:#31135e,stroke:#6929c4,color:#ffffff,stroke-width:2px;
-    classDef agent fill:#f7f5ff,stroke:#8a3ffc,color:#161616,stroke-width:1.5px;
-    classDef development fill:#fff7e6,stroke:#f1c21b,color:#161616,stroke-width:1.5px,stroke-dasharray:5 4;
-    classDef platform fill:#001d6c,stroke:#0f62fe,color:#ffffff,stroke-width:2px;
-
-    class USER user;
-    class LAB orchestrator;
-    class DEV,STATUS,COMPUTE agent;
-    class EXPERIMENT development;
-    class IBMQ platform;
+flowchart LR
+    U[Usuario en DAM] --> A[Quantum Lab · modelo de DAM]
+    A --> D[Desarrollo Qiskit / OpenQASM]
+    A --> T[Herramientas Python]
+    T --> S[Simulador local y QAOA]
+    T --> I[IBM Quantum Platform · SamplerV2]
+    T --> F[Artefactos JSON / QASM / PNG]
 ```
 
-The Lab Agent combines the specialized responses into a single answer containing the generated circuit, selected backend, IBM Quantum Job ID, status, or measurement results.
-
-## ✨ Capabilities
-
-| Capability | What it provides |
+| Función original | Adaptación DAM |
 |---|---|
-| 🎯 **Intelligent routing** | Selects the correct specialized agent for each prompt |
-| 💻 **Code generation** | Produces OpenQASM, Qiskit code, and common quantum algorithms |
-| ⚡ **Real execution** | Submits circuits to accessible IBM Quantum hardware |
-| 📊 **Live monitoring** | Retrieves backend availability, queues, job state, and results |
-| 🗺️ **Backend Canvas** | Shows a live topology and health dashboard for specific `ibm_*` backend queries |
-| 📈 **Execution Canvas** | Presents fresh job results, readable multi-row circuits, QASM, and local query timestamps |
-| 🔄 **Multi-agent workflows** | Chains generation → execution → result inspection |
-| 🧪 **Hybrid experiments** | Runs QAOA Max-Cut optimization, exact validation, Canvas analysis, and optional QPU evaluation *(development)* |
-| 🧠 **Local inference** | Runs IBM Granite 4.2 8B through Ollama |
+| Lab | Harness y modelo configurados en DAM; instrucciones en `AGENTS.md` |
+| Developer | Desarrollo Qiskit/OpenQASM; ejemplos Bell, GHZ, Grover y Deutsch–Jozsa |
+| Status | QPUs accesibles, colas, estado, operaciones y topología |
+| Computing | Simulación local; transpilación ISA y un nuevo job `SamplerV2` cuando lo solicitas |
+| Experiment | QAOA Max-Cut p=1, 2–8 nodos, validación clásica exacta y PNG |
+| Resultados | Job ID, conteos conjuntos, recibos JSON, QASM, circuito y comparación de distribuciones |
 
-## 🚀 Quick start
+La ruta DAM no necesita Ollama ni los cinco servidores A2A. QAOA sigue siendo experimental; el kit no implementa un optimizador VQE general. Los gráficos son archivos para DAM; los marcadores Canvas de Agent Stack pertenecen a la ruta anterior.
 
-### Requirements
+## Instalar desde el repositorio privado
 
-- Python `3.11+`
-- [uv](https://github.com/astral-sh/uv)
-- [Ollama](https://ollama.com/) with `granite4.2:8b`
-- An [IBM Quantum account](https://quantum.cloud.ibm.com/)
+Requisitos locales: Node.js 20+, CLI **DAM 0.2.24**, Git y Python 3.11+. Dentro del agente se usa `uv`; `dam/uv.lock` fija las dependencias cuánticas sin instalar BeeAI ni Agent Stack.
 
-### 1. Clone and install
-
-```bash
-git clone https://github.com/BrUn3y/quantum_lab_agent.git
-cd quantum_lab_agent
-uv sync
-ollama pull granite4.2:8b
+```sh
+npm install -g @dam-agents/cli@0.2.24
+dam auth login --server https://dam.res.ibm.com
+git clone https://github.com/BrUn3y/quantum_lab_agent_dam.git
+cd quantum_lab_agent_dam
+python3 scripts/dam/deploy.py --name quantum-lab
 ```
 
-### 2. Configure credentials
+El instalador usa tu proveedor de modelos preferido en DAM, crea el agente, configura la red, importa **solo archivos rastreados por Git** a `~/work/quantum-lab` e inicia el onboarding. No envía `.git`, credenciales, entornos locales ni resultados. El agente recibe el código privado sin necesitar una conexión GitHub.
 
-```bash
-cp .env.example .env
+Opciones: `--provider 'Nombre del proveedor'`, `--model ALIAS/ID_MODELO`, `--instance CRN` (no secreto), `--no-run`. El ID y la sesión quedan en `.dam-deploy/deployment.json`, ignorado por Git. Si falla tras crear el agente, usa `--existing` para continuar deliberadamente.
+
+```sh
+dam connection list --providers
+dam agent models quantum-lab
+dam agent update quantum-lab --model ALIAS/ID_MODELO
 ```
 
-Add your IBM Quantum token to `.env`. The default model configuration is:
+**Límite de DAM:** “añadir kit por enlace” solo admite repositorios públicos de GitHub. No pegues el enlace privado en ese formulario. El instalador usa la ruta soportada por la CLI y crea un agente normal, sin etiqueta de starter kit. `kit.yaml` conserva el formato oficial y puede añadirse a un catálogo administrado con acceso al repositorio; eso requiere al administrador del despliegue.
 
-```dotenv
-QISKIT_IBM_TOKEN=your_ibm_quantum_token
-OLLAMA_API_BASE=http://127.0.0.1:11434
+## Conectar IBM Quantum Platform
 
-LAB_MODEL=ollama:granite4.2:8b
-DEVELOPER_MODEL=ollama:granite4.2:8b
-STATUS_MODEL=ollama:granite4.2:8b
-COMPUTING_MODEL=ollama:granite4.2:8b
-```
+1. Abre `quantum-lab` en [DAM](https://dam.res.ibm.com/) y entra en su **Terminal**.
+2. Ejecuta tú mismo, directamente allí:
 
-Watsonx remains available as an optional fallback through the `WATSONX_*` variables documented in [`.env.example`](.env.example).
+   ```sh
+   cd ~/work/quantum-lab
+   uv run --locked --project dam python scripts/dam/configure-quantum.py
+   ```
 
-### 3. Start the complete system
+3. Introduce el CRN de tu instancia y la API key de [IBM Quantum Platform](https://quantum.cloud.ibm.com/). La clave se pide con prompt oculto. El programa verifica acceso a QPUs antes de guardar la cuenta del SDK en `~/.qiskit/qiskit-ibm.json`, con permisos `600`.
+4. Vuelve al chat y escribe: **“Verifica la conexión a IBM Quantum Platform y muéstrame las QPUs disponibles.”**
 
-```bash
-./start_all.sh
-```
+No pegues la clave en el chat ni la incluyas en Git. Esta configuración la ejecuta el propietario, no el modelo. Las conexiones `custom-header` de DAM entregan placeholders y no sustituyen la API key en el formulario de IBM IAM. Por eso se usa la cuenta persistente del SDK. La API key queda en el disco privado del agente y debe tratarse como credencial de ese agente.
 
-Or start each service in a separate terminal:
+Los comandos usan el canal `ibm_quantum_platform`. Para ejecución local también admiten `QISKIT_IBM_TOKEN` o `QISKIT_IBM_RUNTIME_APIKEY`, y opcionalmente `QISKIT_IBM_INSTANCE` / `QISKIT_IBM_RUNTIME_INSTANCE`, sin imprimirlos. Las QPUs accesibles dependen de tu cuenta, instancia y región.
 
-```bash
-./start_developer.sh  # Port 8001
-./start_status.sh     # Port 8002
-./start_computing.sh  # Port 8003
-./start_experiment.sh # Port 8004 — development
-./start_lab.sh        # Port 8000 — start last
-```
-
-### View agent logs
-
-The start scripts write separate logs to `.logs/`. Follow every agent in one terminal:
-
-```bash
-./view_logs.sh
-```
-
-Select one agent or print a snapshot without following new output:
-
-```bash
-./view_logs.sh lab
-./view_logs.sh computing -n 200
-./view_logs.sh all --no-follow
-```
-
-### 4. Verify every agent
-
-```bash
-for port in 8000 8001 8002 8003 8004; do
-  curl -fsS "http://127.0.0.1:${port}/.well-known/agent-card.json" \
-    | jq -r '.name'
-done
-```
-
-## 💬 Try it
-
-All requests enter through the Lab Agent's A2A JSON-RPC endpoint:
-
-```bash
-curl -X POST http://127.0.0.1:8000/jsonrpc/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": "quantum-demo",
-    "method": "message/send",
-    "params": {
-      "message": {
-        "kind": "message",
-        "messageId": "11111111-1111-4111-8111-111111111111",
-        "role": "user",
-        "parts": [{
-          "kind": "text",
-          "text": "Create a Bell state and execute it once on the least busy real IBM Quantum backend."
-        }]
-      }
-    }
-  }'
-```
-
-### Suggested prompts
-
-| Goal | Prompt |
-|---|---|
-| Bell state end-to-end | `Create a Bell state, execute it on the local simulator with 1024 shots, and explain the results` |
-| Grover search | `Create Grover's algorithm for 3 qubits and run it on the local simulator` |
-| Real QPU execution | `Create a Bell state and execute it once on the least busy real IBM Quantum backend` |
-| List available QPUs | `What quantum computers are available?` |
-| Inspect a backend | `Give me detailed information about ibm_fez` |
-| Deutsch–Jozsa | `Create and execute a Deutsch-Jozsa circuit for a balanced oracle` |
-| QAOA Max-Cut *(development)* | `Use QAOA to solve Max-Cut on a 5-node graph using the local simulator` |
-| Explain a concept | `Explain what quantum entanglement is` |
-| Check a job | `Show me the status and results of job <job-id>` |
-
-Backend availability depends on the IBM Quantum account. The agent queries the live service and chooses among the backends actually accessible to the configured account.
-
-## 🧪 End-to-end tests
-
-Run the live suite to verify all five services, execute Bell, CX, Grover, and Deutsch–Jozsa circuits through the Lab → Developer → Computing flow, and validate a QAOA Max-Cut experiment through the Experiment Agent:
-
-```bash
-./test_e2e.sh
-```
-
-The suite uses the agents already running on ports `8000`–`8004`. If none are running, it starts all five with `granite4.2:8b`, waits for their agent cards, runs every circuit and experiment on local simulators, and stops only the processes it started. Logs from an automatic startup are written to `.logs/e2e/`.
-
-Useful options:
-
-```bash
-./test_e2e.sh --no-start        # Require an existing five-agent system
-./test_e2e.sh --shots 256       # Change the number of simulator shots
-./test_e2e.sh --timeout 300     # Allow slower local environments
-```
-
-Custom `--lab-port`, `--developer-port`, `--status-port`, `--computing-port`, and `--experiment-port` options are available for isolated or parallel test environments.
-
-## ⚙️ Configuration
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `OLLAMA_API_BASE` | `http://127.0.0.1:11434` | Ollama endpoint |
-| `LAB_MODEL` | `ollama:granite4.2:8b` | Lab orchestrator model |
-| `DEVELOPER_MODEL` | `ollama:granite4.2:8b` | Code generation model |
-| `STATUS_MODEL` | `ollama:granite4.2:8b` | Status model |
-| `COMPUTING_MODEL` | `ollama:granite4.2:8b` | Execution model |
-| `LAB_PORT` | `8000` | Lab Agent port |
-| `DEVELOPER_PORT` | `8001` | Developer Agent port |
-| `STATUS_PORT` | `8002` | Status Agent port |
-| `COMPUTING_PORT` | `8003` | Computing Agent port |
-| `EXPERIMENT_PORT` | `8004` | Experiment Agent port *(development)* |
-
-## 🔁 How requests are handled
-
-| Request | Agents involved |
-|---|---|
-| “Generate a teleportation circuit” | Developer |
-| “Create a Bell state and run it” | Developer → Computing |
-| “Which backends are available?” | Status |
-| “Check job `…` and show its results” | Status |
-| “Create, execute, and inspect the result” | Developer → Computing → Status |
-| “Use QAOA to solve a 5-node Max-Cut problem” | Experiment → Computing *(when QPU execution is requested)* |
-
-## 🐳 Docker
-
-The included image runs the Lab Agent. Start the four specialized agents on the host, then build and run the orchestrator:
-
-```bash
-docker build -t quantum-lab-agent .
-docker run --env-file .env -p 8000:8000 quantum-lab-agent
-```
-
-The Developer, Status, Computing, and Experiment agents must remain reachable through the host and port values configured in `.env`. For an all-local setup, `./start_all.sh` is the recommended option.
-
-## 🧰 Troubleshooting
-
-| Problem | Check |
-|---|---|
-| A workflow is incomplete | Confirm that all five agent cards respond |
-| Ollama cannot be reached | Run `ollama list` and confirm `granite4.2:8b` is installed |
-| IBM Quantum authentication fails | Verify `QISKIT_IBM_TOKEN` in `.env` |
-| A port is already occupied | Run `lsof -nP -iTCP:<port> -sTCP:LISTEN` |
-| A named backend is unavailable | List the live backends and use one accessible to the account |
-
-## 📁 Project structure
+## Usarlo desde el chat
 
 ```text
-quantum_lab_agent/
-├── docs/images/quantum-lab-demo.gif
-├── docs/images/quantum-experiment-real-hardware.gif
-├── src/beeai_agents/
-│   ├── quantum_lab_agent.py
-│   ├── quantum_developer_agent.py
-│   ├── quantum_status_agent.py
-│   ├── quantum_computing_agent.py
-│   ├── quantum_experiment_agent.py
-│   └── tools/
-├── .env.example
-├── Dockerfile
-├── start_all.sh
-├── start_lab.sh
-├── start_developer.sh
-├── start_status.sh
-├── start_computing.sh
-├── start_experiment.sh
-├── view_logs.sh
-└── pyproject.toml
+Crea un estado Bell y simúlalo con 1024 shots. Muéstrame circuito e histograma.
+¿Qué computadoras de IBM Quantum tengo disponibles y cómo están sus colas?
+Muéstrame la topología y el estado actual de ibm_NOMBRE.
+Optimiza QAOA Max-Cut para cinco nodos y compáralo con el óptimo clásico.
+Ejecuta una vez el circuito Bell en hardware real de IBM Quantum con 1024 shots.
+Consulta el estado y los resultados del job ID_QUE_DEVOLVIO_IBM.
 ```
 
-## 🔗 Public agent repositories
+```sh
+dam run quantum-lab -p 'Crea un estado Bell y simúlalo con 1024 shots'
+dam chat quantum-lab
+```
 
-| Repository | Role |
-|---|---|
-| [Quantum Computing Agent](https://github.com/BrUn3y/quantum-computing-agent) | Circuit execution specialist |
-| [Quantum Status Agent](https://github.com/BrUn3y/quantum-status-agent) | Status monitoring and job tracking |
-| [Quantum Developer Agent](https://github.com/BrUn3y/quantum-developer-agent) | Code generation and algorithm implementation |
-| [Quantum Lab Agent](https://github.com/BrUn3y/quantum_lab_agent) | Main orchestrator coordinating all agents |
-| [Quantum Experiment Agent](https://github.com/BrUn3y/quantum-experiment-agent) | Hybrid optimization and experiment analysis *(in development)* |
+La simulación es el comportamiento predeterminado. Cuando pides hardware real, se envía un job y se devuelve el Job ID sin esperar toda la cola. Consulta después ese mismo ID. El límite predeterminado de ejecución QPU es 300 segundos por job; no limita el costo ni la espera. Si se pierde la respuesta de un envío, revisa en IBM los jobs etiquetados `quantum-lab-dam` antes de solicitar otro.
 
-## Contributing
+## Herramientas y desarrollo local
 
-Issues and pull requests are welcome. When changing a workflow, validate all five agent endpoints and include an end-to-end prompt test.
+```sh
+bash scripts/dam/setup.sh
+scripts/dam/quantum doctor --online
+scripts/dam/quantum backends
+scripts/dam/quantum backend ibm_NOMBRE --dashboard
+scripts/dam/quantum execute --example bell --shots 1024
+scripts/dam/quantum execute --example ghz --qubits 5
+scripts/dam/quantum execute --example grover
+scripts/dam/quantum execute --example deutsch-jozsa --qubits 3
+scripts/dam/quantum execute --qasm circuito.qasm
+scripts/dam/quantum execute --qasm circuito.qasm --hardware --shots 1024
+scripts/dam/quantum job JOB_ID --output artifacts/dam/job.json
+scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'
+scripts/dam/quantum compare --left RECIBO_LOCAL.json --right artifacts/dam/job.json
+```
 
----
+Grover usa dos qubits y el estado marcado `11`; Deutsch–Jozsa usa un oráculo balanceado. El modelo puede desarrollar otros circuitos y exportarlos a QASM. El simulador limita el circuito a 20 qubits. Los conteos de varios registros conservan sus correlaciones. Compara distribuciones del mismo circuito y orden de registros. Artefactos: `artifacts/dam/<run>/`.
 
-<div align="center">
+```sh
+uv sync --locked --project dam
+uv run --locked --project dam pytest dam/tests -q
+uv run --locked --project dam ruff check dam scripts/dam
+```
 
-Built with [BeeAI Framework](https://github.com/i-am-bee/beeai-framework), [IBM Granite](https://www.ibm.com/granite), [Qiskit](https://www.ibm.com/quantum/qiskit), and [IBM Quantum](https://quantum.cloud.ibm.com/).
+CI ejecuta esas pruebas en Linux: algoritmos, QASM, correlaciones, QAOA, contratos de envío QPU sin reintentos y persistencia del Job ID, y errores sin exponer credenciales. Los mocks no verifican la conexión IBM real; usa `doctor --online`.
 
-</div>
+## Actualizar
+
+```sh
+git pull
+python3 scripts/dam/deploy.py --name quantum-lab --existing --no-run
+dam run quantum-lab -p 'En ~/work/quantum-lab ejecuta bash scripts/dam/setup.sh y verifica IBM; no envíes jobs.'
+```
+
+En DAM 0.2.24 la importación puede sustituir la carpeta de código completa. Descarga antes los artefactos que quieras conservar con `dam file get`. La cuenta del SDK queda fuera de esa carpeta. No elimines el agente para actualizar: eliminarlo también borra su cuenta y datos.
+
+Si falla IBM, revisa API key, CRN y reglas para `iam.cloud.ibm.com`, `resource-controller.cloud.ibm.com`, `quantum.cloud.ibm.com` y el endpoint regional (`us-east.quantum.cloud.ibm.com` o `eu-de.quantum.cloud.ibm.com`). Para otra región agrega el hostname indicado por IBM a las reglas de DAM.
+
+Referencias: [starter kits oficiales](https://github.com/dam-agents/dam-starter-kits), [arquitectura de kits](https://github.com/dam-agents/dam/blob/main/docs/architecture/starter-kits.md).

@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dam-agents/dam-starter-kits/main/kit.schema.json
+schemaVersion: v1
+id: quantum-lab
+name: Quantum Lab
+tagline: Develop, simulate and execute quantum experiments on IBM Quantum Platform.
+description: >-
+  Adapts BrUn3y's Quantum Lab to a DAM coding agent with Qiskit tools for
+  Bell, GHZ, Grover, Deutsch–Jozsa, live backend inspection, SamplerV2 QPU
+  submission, job results, and locally validated QAOA Max-Cut experiments.
+  IBM Quantum credentials are configured by the owner in a hidden terminal prompt.
+category: research
+icon: atom
+docsUrl: https://github.com/BrUn3y/quantum_lab_agent_dam
+harnesses: [claude-code, codex, pi, bob]
+seed:
+  self: true
+  into: work
+install:
+  command: bash scripts/dam/setup.sh
+egressPreset: trusted
+egressRules:
+  - host: pypi.org
+  - host: files.pythonhosted.org
+  - host: github.com
+  - host: release-assets.githubusercontent.com
+  - host: iam.cloud.ibm.com
+  - host: resource-controller.cloud.ibm.com
+  - host: quantum.cloud.ibm.com
+  - host: us-east.quantum.cloud.ibm.com
+  - host: eu-de.quantum.cloud.ibm.com
+resources:
+  cpu: "2"
+  memory: 4Gi
+  storage: 10Gi
+  note: Recommended for local statevector simulation; kit resources are advisory.
+bundledSkills:
+  path: .agents/skills
+onboarding:
+  prompt: Read AGENTS.md and follow ONBOARDING.md. Test the local Bell simulator first. Never ask for or read a secret. Guide the owner to configure IBM Quantum from their own DAM Terminal, then verify live backend access. Never submit a QPU job unless requested.

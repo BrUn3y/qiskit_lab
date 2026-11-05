@@ -1,0 +1,23 @@
+name: DAM starter kit
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-dam:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: dam/uv.lock
+      - run: uv sync --locked --project dam
+      - run: uv run --locked --project dam pytest dam/tests -q
+      - run: uv run --locked --project dam ruff check dam scripts/dam
+      - run: bash -n scripts/dam/setup.sh scripts/dam/quantum
