@@ -43,7 +43,11 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
 
 ## IBM setup
 
-At the start of a new chat run `scripts/dam/quantum onboarding`. If it returns
+At the start of a new chat run `scripts/dam/quantum onboarding`. Until the first
+visible reply, use tool calls only. Do not send progress commentary or announce
+startup checks, even by saying that you will run them silently. Begin the first
+visible reply with "Hello!" and address the owner's actual request or next action.
+If it returns
 `needs_credentials`, your first reply asks the owner to configure their IBM
 Quantum API key and CRN, shows the command below, and offers local simulation
 until setup is complete. If `ready`, reuse the account without asking again.

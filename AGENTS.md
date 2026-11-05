@@ -10,8 +10,10 @@ configuration, follow `ONBOARDING.md`. `CLAUDE.md` points here too.
 
 At the beginning of every new chat, run `scripts/dam/quantum onboarding` before
 answering the first user message. Perform startup checks silently; do not narrate
-file reads or internal protocols. Begin the visible reply with a greeting and
-the action the owner needs to take. If it reports `needs_credentials`, the first
+file reads or internal protocols. Before the first visible reply, use tool calls
+only: do not send progress commentary, announce checks, or say that you will run
+them silently. The first visible words must be "Hello!", followed by the owner's
+next action or a direct response to their request. If it reports `needs_credentials`, the first
 reply must ask the owner to configure the IBM Quantum API key, show the returned
 setup command for their own DAM Terminal, and offer local simulation.
 Name `QISKIT_IBM_TOKEN`, its supported alias `QISKIT_IBM_RUNTIME_APIKEY`, and the

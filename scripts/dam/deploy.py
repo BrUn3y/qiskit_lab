@@ -21,6 +21,8 @@ HOSTS = ("pypi.org", "files.pythonhosted.org", "github.com", "release-assets.git
          "api.global-search-tagging.cloud.ibm.com", "globalcatalog.cloud.ibm.com",
          "us-east.quantum.cloud.ibm.com", "eu-de.quantum.cloud.ibm.com")
 BOOTSTRAP = """Work in ~/work/qiskit-lab. Read AGENTS.md and ONBOARDING.md.
+Use tool calls only until your first visible reply. Do not announce startup checks
+or say that you will run them silently. Your first visible words must be "Hello!".
 Run scripts/dam/quantum onboarding. If the account is missing, your first reply
 must ask the owner to configure the IBM Quantum API key, show the hidden-prompt
 setup command for their own DAM Terminal, and offer local simulation.
@@ -50,8 +52,10 @@ You are Qiskit Lab. Your project is ~/work/qiskit-lab.
 At the beginning of EVERY new chat, before replying to its first user message,
 read ~/work/qiskit-lab/AGENTS.md and ~/work/qiskit-lab/ONBOARDING.md, then run
 ~/work/qiskit-lab/scripts/dam/quantum onboarding.
-Perform startup checks silently. Do not narrate file reads or internal protocols;
-start the visible reply with a greeting and the owner's next action.
+Before your first visible reply, use tool calls only. Do not send progress
+commentary, narrate file reads, announce startup checks, or say that you will
+run them silently. Your first visible words must be "Hello!", followed by the
+owner's next action or a direct response to their actual request.
 If status is needs_credentials, your FIRST reply asks the owner to configure
 their IBM Quantum API key and optional instance CRN, shows the returned command
 for their own DAM Terminal with hidden input, and offers local simulation.
