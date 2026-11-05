@@ -12,7 +12,7 @@ from pathlib import Path
 import matplotlib
 import numpy as np
 from qiskit import QuantumCircuit
-from qiskit.qasm2 import dumps as qasm2_dumps
+from qiskit.qasm3 import dumps as qasm3_dumps
 from qiskit.quantum_info import Statevector
 
 matplotlib.use("Agg")
@@ -245,6 +245,6 @@ def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAE
         best_cut=best_cut,
         counts=dict(sorted(counts.items(), key=lambda item: item[1], reverse=True)),
         optimization_trace=tuple(trace),
-        qasm=qasm2_dumps(measured_circuit),
+        qasm=qasm3_dumps(measured_circuit),
         dashboard_path=dashboard_path,
     )

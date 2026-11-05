@@ -29,6 +29,7 @@ def test_algorithms_execute_offline(example, expected, tmp_path, offline):
     assert result["hardware"] is False
     assert "job_id" not in result
     assert (Path(result["artifacts"]) / "receipt.json").exists()
+    assert Path(result["report_path"]).exists()
     assert not offline.called
 
 
@@ -141,6 +142,9 @@ def test_qaoa_reuses_original_engine_offline(tmp_path, offline):
     assert sum(response["counts"].values()) == 256
     assert Path(response["dashboard_path"]).exists()
     assert Path(response["qasm_path"]).exists()
+    assert Path(response["report_path"]).exists()
+    circuit = qasm3.loads(Path(response["qasm_path"]).read_text())
+    assert circuit.num_qubits == 5
     assert not offline.called
 
 

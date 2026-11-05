@@ -28,7 +28,7 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    least-busy QPU with enough qubits. Transpile to its ISA and submit once
    using IBM Runtime SamplerV2. Return the accepted job ID immediately.
 5. **Inspect:** `scripts/dam/quantum job JOB_ID` retrieves status and, when done,
-   joint bit counts. `--wait 60` waits briefly for an existing job, and
+   joint bit counts and a standalone `report.html` using official IBM Carbon styles. `--wait 60` waits briefly for an existing job, and
    `--output artifacts/dam/job.json` saves it. A timeout is not a new submission.
 6. **Experiment:** `scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'`.
    This runs the Qiskit deterministic p=1 engine (2–8 nodes), optimizes locally,
@@ -70,6 +70,31 @@ actual API key in the IBM IAM form body, so do not substitute that mechanism.
 DAM chat password fields also reach the transcript in plain text; do not use
 them to collect keys. If a key is pasted into a conversation, do not echo,
 persist or transfer it; guide the owner to replace it through the hidden prompt.
+
+## Automatic completion reports
+
+Every successful `execute` and `qaoa` command creates `report.html` next to its
+JSON, QASM and PNG artifacts. Always link `report_path` in the response. The HTML
+includes embedded Carbon styles and IBM Plex fonts, metadata, available timing
+and QPU usage, interactive probability/count charts, searchable measurement
+tables, downloads, source circuit, and QAOA optimization details when applicable.
+It works offline. Do not substitute an ad hoc HTML design.
+
+For hardware, `job JOB_ID` generates the report only at DONE, ERROR or CANCELLED;
+failed and cancelled jobs have no invented counts. Result-download failures are
+retried on the next read-only poll. No QPU job is resubmitted.
+
+The private deployer installs a two-minute DAM schedule with
+`bash scripts/dam/quantum poll-jobs --precheck`. The precheck polls tracked receipts
+under `artifacts/dam/`, generates terminal reports, and skips the model when no
+completion notification is pending. The scheduled task presents report links and
+then runs `poll-jobs --ack JOB_ID` for each delivered report. The durable queue
+survives restarts; unacknowledged reports remain pending. Run `poll-jobs` manually
+to recover notifications. If a job uses another artifact directory, supply
+`--output-dir PATH` to both `job` and `poll-jobs` and configure a matching schedule.
+After delivering a hardware report in an interactive chat, acknowledge its ID to
+avoid a duplicate scheduled notification. Never acknowledge before delivery.
+Surface `report_error` and preserve the scientific result if rendering fails.
 
 ## Reporting
 

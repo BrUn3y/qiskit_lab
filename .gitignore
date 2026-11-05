@@ -105,6 +105,7 @@ Thumbs.db
 skills-lock.json
 artifacts/
 .dam-deploy/
+node_modules/
 
 # Temporary visualizations
 temp_visualizations/

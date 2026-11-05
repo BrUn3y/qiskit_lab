@@ -13,6 +13,7 @@ import os
 import re
 import shutil
 import sys
+import time
 import uuid
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -23,6 +24,8 @@ from qiskit.primitives import StatevectorSampler
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
+
+from qiskit_lab.reports import write_report
 
 ROOT = Path.cwd()
 logging.getLogger("qiskit_ibm_runtime").setLevel(logging.CRITICAL)
@@ -52,7 +55,7 @@ def now():
 def save_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(json.dumps(value, indent=2, default=str) + "\n")
     temporary.replace(path)
 
@@ -61,6 +64,27 @@ def artifact_dir(base):
     directory = Path(base) / (datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8])
     directory.mkdir(parents=True)
     return directory
+
+
+def circuit_info(circuit):
+    return {"qubits": circuit.num_qubits, "depth": circuit.depth(),
+            "gate_counts": dict(circuit.count_ops())}
+
+
+def sdk_versions():
+    return {package: importlib.metadata.version(package) for package in ("qiskit", "qiskit-ibm-runtime")}
+
+
+def finish_report(response, directory, filename):
+    # Persist scientific results even if presentation generation fails.
+    response.pop("report_error", None)
+    save_json(directory / filename, response)
+    try:
+        write_report(response, directory)
+    except Exception as error:  # noqa: BLE001 - Report failures must never lose accepted job/results
+        response["report_error"] = type(error).__name__
+    save_json(directory / filename, response)
+    return response
 
 
 def example_circuit(name, qubits=3):
@@ -126,6 +150,7 @@ def backend_summary(backend):
 
 
 def execute(args):
+    started = time.monotonic()
     if args.backend and not args.hardware:
         raise UserError("--backend requires --hardware. Omit both for local simulation.")
     circuit = load_circuit(args)
@@ -136,6 +161,8 @@ def execute(args):
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
     receipt = {"run_id": directory.name, "created_at": now(), "shots": args.shots,
                "qubits": circuit.num_qubits, "hardware": args.hardware, "artifacts": str(directory)}
+    receipt.update(circuit_info(circuit), versions=sdk_versions(),
+                   title=(args.example.replace("-", " ").title() + " circuit") if args.example else "Custom quantum circuit")
     if args.hardware:
         service = runtime_service()
         backend = (service.backend(args.backend) if args.backend else
@@ -145,6 +172,9 @@ def execute(args):
         if backend.num_qubits < circuit.num_qubits:
             raise UserError("The selected backend has too few qubits.")
         isa_circuit = generate_preset_pass_manager(backend=backend, optimization_level=1).run(circuit)
+        (directory / "isa-circuit.qasm").write_text(qasm3.dumps(isa_circuit))
+        receipt.update(isa_qubits=isa_circuit.num_qubits, isa_depth=isa_circuit.depth(),
+                       isa_gate_counts=dict(isa_circuit.count_ops()), max_execution_time=args.max_execution_time)
         sampler = SamplerV2(mode=backend, options={"max_execution_time": args.max_execution_time,
                                                   "environment": {"job_tags": ["qiskit-lab-dam"]}})
         # Never retry run(): a network error may occur after IBM accepted a job.
@@ -164,28 +194,48 @@ def execute(args):
     finally:
         image.unlink(missing_ok=True)
     receipt["dashboard_path"] = str(directory / "results.png")
-    save_json(directory / "receipt.json", receipt)
-    return receipt
+    receipt.update(completed_at=now(), duration_seconds=round(time.monotonic() - started, 6), seed=42)
+    return finish_report(receipt, directory, "receipt.json")
 
 
 def inspect_job(args):
+    from qiskit_lab.job_tracking import find_receipt, job_metadata
+    from qiskit_lab.reports import job_directory
+
+    base = getattr(args, "output_dir", ROOT / "artifacts/dam")
+    directory, response = find_receipt(base, args.job_id)
+    directory = directory or job_directory(base, args.job_id)
     job = runtime_service().job(args.job_id)
     backend = job.backend()
-    response = {"job_id": job.job_id(), "backend": backend.name, "status": str(job.status()), "queried_at": now()}
-    if response["status"] == "DONE" or args.wait:
+    response.update(job_id=job.job_id(), backend=backend.name, status=str(job.status()), queried_at=now(),
+                    hardware=True, artifacts=str(directory))
+    if response["status"] == "DONE" or (args.wait and response["status"] not in {"ERROR", "CANCELLED"}):
         try:
             response["counts"] = counts_from_result(job.result(timeout=args.wait or 30))
             response["status"] = str(job.status())
+            response.pop("result_error", None)
+            response.pop("next_step", None)
         except Exception as error:  # noqa: BLE001 - SDK failures must never expose credentials
             # The accepted job is still identified even after a timeout/failure.
             response["result_error"] = type(error).__name__
             response["next_step"] = "Query this same job ID again; do not resubmit the circuit."
+    if response["status"] in {"DONE", "ERROR", "CANCELLED"}:
+        response.update(job_metadata(job))
+        # A failed result download is retryable; do not publish an empty success report.
+        if response["status"] != "DONE" or "counts" in response:
+            finish_report(response, directory, "receipt.json")
+        else:
+            save_json(directory / "receipt.json", response)
+    else:
+        save_json(directory / "receipt.json", response)
     if args.output:
         save_json(args.output, response)
     return response
 
 
 def qaoa(args):
+    started = time.monotonic()
+    started_at = now()
     from qiskit_lab.experiment_engine import run_maxcut_qaoa
 
     result = run_maxcut_qaoa(args.request, shots=args.shots)
@@ -197,10 +247,14 @@ def qaoa(args):
     (directory / "optimized.qasm").write_text(result.qasm)
     response = asdict(result)
     response.pop("qasm")
-    response.update(hardware=False, created_at=now(), dashboard_path=str(directory / "qaoa.png"),
+    response.update(hardware=False, created_at=started_at, dashboard_path=str(directory / "qaoa.png"),
                     qasm_path=str(directory / "optimized.qasm"), artifacts=str(directory))
-    save_json(directory / "experiment.json", response)
-    return response
+    circuit = qasm3.loads(result.qasm)
+    (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
+    response.update(circuit_info(circuit), status="DONE", shots=args.shots, seed=42,
+                    title="QAOA Max-Cut experiment", backend="local_statevector_simulator", versions=sdk_versions(),
+                    run_id=directory.name, completed_at=now(), duration_seconds=round(time.monotonic() - started, 6))
+    return finish_report(response, directory, "experiment.json")
 
 
 def doctor(args):
@@ -328,6 +382,11 @@ def parser():
     status.add_argument("job_id")
     status.add_argument("--wait", type=bounded_integer(0, 300), default=0)
     status.add_argument("--output", type=Path)
+    status.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
+    poll = commands.add_parser("poll-jobs", help="Check tracked jobs and generate Carbon HTML on completion")
+    poll.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
+    poll.add_argument("--precheck", action="store_true", help="Exit 1 when no report notifications are pending")
+    poll.add_argument("--ack", action="append", default=[], metavar="JOB_ID", help="Acknowledge a delivered report")
     experiment = commands.add_parser("qaoa", help="Optimize and validate Max-Cut locally (2–8 nodes)")
     experiment.add_argument("--request", default="QAOA Max-Cut on a 5-node graph")
     experiment.add_argument("--shots", type=bounded_integer(1, 100000), default=1024)
@@ -356,6 +415,12 @@ def main(argv=None):
             result = inspect_job(args)
         elif args.command == "qaoa":
             result = qaoa(args)
+        elif args.command == "poll-jobs":
+            from qiskit_lab.job_tracking import poll_jobs
+
+            result = poll_jobs(args)
+            print(json.dumps(result, indent=2, default=str))
+            return 1 if args.precheck and not result["notifications"] else 0
         else:
             result = compare(args)
         print(json.dumps(result, indent=2, default=str))

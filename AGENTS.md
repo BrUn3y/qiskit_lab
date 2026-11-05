@@ -25,7 +25,7 @@ Use DAM's model/harness for reasoning and circuit development. Use
 `scripts/dam/quantum` or `uv run --locked qiskit-lab` for execution and live queries.
 All quantum operations use Qiskit directly. The package is `src/qiskit_lab`;
 it includes circuit execution, backend inspection, job retrieval, deterministic
-QAOA Max-Cut, and PNG visualizations. Never invent results.
+QAOA Max-Cut, PNG visualizations, and automatic Carbon HTML reports. Never invent results.
 
 A request for real IBM Quantum hardware authorizes one submission. Use
 `--hardware`, preserve and return the job ID, backend, shots and artifact paths.
@@ -39,6 +39,21 @@ account files or keys. Never run the hidden credential prompt with model tools.
 The owner runs it directly in their Terminal. Only the application/IBM SDK uses
 credentials at runtime. Keep SDK HTTP debug logging disabled. Use
 `doctor --online` to verify live access; offline tests do not prove connectivity.
+
+Every completed simulation, QAOA experiment, and terminal IBM job must produce
+`report.html` using the bundled official IBM Carbon Design System styles. The
+CLI returns `report_path`; always give the owner a supported DAM workspace file
+link to that report. Keep code, reports and responses in English. If `report_error`
+is returned, disclose it and preserve the results; do not claim a report exists.
+Queued/running jobs do not have final reports. Do not wait indefinitely in chat.
+The installer creates a two-minute `Qiskit Lab job reports` schedule. Its precheck
+runs `poll-jobs --precheck`: this queries already accepted IDs, writes reports at
+DONE/ERROR/CANCELLED, and wakes the model only for unacknowledged notifications.
+It never submits QPU work. Run `scripts/dam/quantum poll-jobs` to retrieve pending
+notifications. Present each report link before `poll-jobs --ack JOB_ID`; never
+acknowledge undelivered reports. After manually delivering a hardware report,
+also acknowledge that job ID to avoid a later duplicate notification. Scheduled
+reporting is maintenance, not a first-time onboarding conversation.
 
 Save outputs under `artifacts/dam/` and return supported DAM file links. Query
 existing job IDs after a timeout or new session instead of submitting replacements.

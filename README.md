@@ -21,7 +21,7 @@ flowchart LR
 | Status | Accessible QPUs, queues, status, operations and topology |
 | Computing | Local simulation; ISA transpilation and one fresh `SamplerV2` job when requested |
 | Experiment | QAOA Max-Cut p=1, 2–8 nodes, exact classical validation and PNG |
-| Results | Job IDs, joint counts, JSON receipts, QASM, circuit diagrams and distribution comparisons |
+| Results | Automatic Carbon HTML reports, job IDs, joint counts, JSON receipts, QASM, circuit diagrams and distribution comparisons |
 
 Both **`qiskit` and `qiskit-ibm-runtime` are required dependencies** and must be installed before using the tools. QAOA remains experimental; this kit does not implement a general VQE optimizer. Code, documentation and agent responses use English.
 
@@ -92,6 +92,60 @@ dam chat 'Qiskit Lab'
 ```
 
 Simulation is the default. When you request real hardware, the agent submits one job and returns its ID without waiting through the entire queue. Query the same ID later. The default QPU execution limit is 300 seconds per job; it does not limit cost or queue time. If a submission response is lost, inspect IBM jobs tagged `qiskit-lab-dam` before requesting another submission.
+
+## Automatic Carbon HTML job reports
+
+Every completed simulation and QAOA experiment automatically produces
+`report.html` alongside its JSON, QASM and PNG artifacts. The chat returns a link
+to the HTML report. Reports use the official **IBM Carbon Design System** Gray 100
+theme and bundled IBM Plex fonts. They are self-contained and open offline.
+
+Reports include the recorded job/run ID, backend, status, requested and observed
+shots, source/ISA circuit statistics, available timestamps and IBM QPU usage,
+SDK versions, measurement charts with probability/count controls, searchable and
+paginated state tables, downloadable JSON/OpenQASM, source circuit, and the
+scientific dashboard. QAOA reports also include the optimization trace and exact
+classical comparison. Missing IBM metadata is marked unavailable.
+
+For IBM hardware, submission still returns immediately. The deployer installs
+**Qiskit Lab job reports**, a DAM schedule that checks tracked jobs every **two
+minutes**. Its precheck queries existing IDs and writes the final HTML when DONE,
+ERROR or CANCELLED; it invokes the model only when a report needs to be announced.
+No report step submits another hardware job. Failed/cancelled jobs receive a
+status report without fabricated counts. Report delivery appears in the DAM
+scheduled run; instant delivery into the original chat is not guaranteed.
+
+The schedule uses persistent notifications: after presenting each report link,
+the agent acknowledges that ID. An interrupted delivery remains pending. Network
+or result-download errors keep the job eligible for the next poll. DAM must be
+running and its schedule enabled for automatic checks. Detection occurs at the
+next successful poll, not at the exact moment IBM finishes.
+
+```sh
+# Inspect one existing job and create its report if it has ended.
+uv run --locked qiskit-lab job JOB_ID
+# Check all tracked jobs, generate completed reports, and list pending links.
+uv run --locked qiskit-lab poll-jobs
+# After delivering a report to the owner, acknowledge its notification.
+uv run --locked qiskit-lab poll-jobs --ack JOB_ID
+```
+
+The default tracked directory is `artifacts/dam/`. If you use a custom hardware
+`--output-dir`, use that directory for subsequent job queries and polling and
+configure the schedule to match. Reports contain only explicitly recorded job
+data; account files and credentials are never embedded.
+
+Carbon CSS and fonts ship inside the Python wheel. Node.js is only needed to
+rebuild these checked-in frontend assets, not to run or open reports:
+
+```sh
+cd tools/report-assets
+npm ci --ignore-scripts
+npm run build
+```
+
+Third-party licenses and exact asset versions are documented in
+`src/qiskit_lab/assets/NOTICE.md`.
 
 ## Tools and local development
 

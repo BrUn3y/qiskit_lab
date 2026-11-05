@@ -33,6 +33,18 @@ Do not submit QPU jobs. All replies and documentation must be in English.
 """
 HOME_START = "<!-- qiskit-lab:instructions:start -->"
 HOME_END = "<!-- qiskit-lab:instructions:end -->"
+REPORT_SCHEDULE_NAME = "Qiskit Lab job reports"
+REPORT_PRECHECK = "cd ~/work/qiskit-lab && bash scripts/dam/quantum poll-jobs --precheck"
+REPORT_TASK = """Work in ~/work/qiskit-lab. This is scheduled completion reporting, not onboarding.
+Read AGENTS.md and the project skill. Run bash scripts/dam/quantum poll-jobs.
+For each pending notification, present the existing Carbon HTML report using a
+supported DAM workspace file link, along with the job ID, backend and final state.
+After presenting each link, acknowledge only that ID with
+bash scripts/dam/quantum poll-jobs --ack JOB_ID. Never acknowledge an undelivered
+report. If there are only errors, explain the safe error class and keep tracking.
+Never submit, retry, cancel or modify an IBM job. Never read credentials.
+Use English. Do not run unrelated demos or scans of user files.
+"""
 HOME_INSTRUCTIONS = f"""{HOME_START}
 You are Qiskit Lab. Your project is ~/work/qiskit-lab.
 At the beginning of EVERY new chat, before replying to its first user message,
@@ -50,6 +62,9 @@ Do not collect the key in chat or a masked chat form; both enter the transcript.
 Do not run algorithm demos before that invitation. If ready, reuse the verified
 account without asking again. Explain a connection_error without reading secrets.
 Never submit a hardware job during onboarding. Always respond in English.
+Every completed simulation, experiment and hardware job must have a Carbon HTML
+report. Return report_path as a supported DAM file link. Pending hardware jobs
+are checked by the Qiskit Lab job reports schedule; never resubmit them.
 {HOME_END}"""
 
 
@@ -127,6 +142,18 @@ def install_home_instructions(agent_id, temporary):
     run(["dam", "file", "put", agent_id, str(path), "AGENTS.md", "--overwrite"])
 
 
+def configure_report_schedule(agent_id):
+    schedules = run(["dam", "schedule", "list", agent_id, "--json"], as_json=True)
+    matches = [schedule for schedule in schedules if schedule.get("name") == REPORT_SCHEDULE_NAME]
+    if len(matches) > 1:
+        raise RuntimeError("Multiple completion-report schedules found; keep one active schedule in DAM.")
+    if matches:
+        return matches[0]
+    return run(["dam", "schedule", "create", agent_id, "--name", REPORT_SCHEDULE_NAME,
+                "--every", "2m", "--session-mode", "fresh", "--precheck", REPORT_PRECHECK,
+                "--task", REPORT_TASK, "--json"], as_json=True)
+
+
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--name", default="Qiskit Lab")
@@ -179,6 +206,7 @@ def main():
         deployment["import"] = imported
         state_path.write_text(json.dumps(deployment, indent=2) + "\n")
         deployment["model"] = configure_model(agent_id, args.model)
+        deployment["report_schedule"] = configure_report_schedule(agent_id)
         if not args.no_run:
             prompt_file = Path(temporary) / "bootstrap.txt"
             prompt_file.write_text(BOOTSTRAP)

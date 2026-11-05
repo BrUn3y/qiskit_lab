@@ -1,0 +1,13 @@
+// Official Carbon components used by the standalone job report.
+@use '@carbon/styles/scss/reset';
+@use '@carbon/styles/scss/layout';
+@use '@carbon/styles/scss/layer';
+@use '@carbon/styles/scss/components/button';
+@use '@carbon/styles/scss/components/tag';
+@use '@carbon/styles/scss/components/data-table';
+@use '@carbon/styles/scss/components/text-input';
+@use '@carbon/styles/scss/components/link';
+@use '@carbon/styles/scss/components/select';
+@use '@carbon/styles/scss/theme';
+@use '@carbon/styles/scss/themes';
+:root { @include theme.theme(themes.$g100); }
