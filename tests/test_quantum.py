@@ -204,6 +204,20 @@ def test_first_chat_reuses_verified_account_without_requesting_key(monkeypatch, 
     service.backends.assert_called_once_with(simulator=False)
 
 
+def test_online_doctor_records_the_live_query_time(monkeypatch):
+    from datetime import datetime
+
+    backend = SimpleNamespace(name="ibm_test", num_qubits=3,
+                              status=lambda: SimpleNamespace(operational=True, pending_jobs=0, status_msg="active"))
+    service = Mock()
+    service.backends.return_value = [backend]
+    monkeypatch.setattr(quantum, "runtime_service", lambda: service)
+    result = quantum.doctor(quantum.parser().parse_args(["doctor", "--online"]))
+    assert result["connected"]
+    assert datetime.fromisoformat(result["queried_at"]).utcoffset().total_seconds() == 0
+    service.backends.assert_called_once_with(simulator=False)
+
+
 def test_first_chat_distinguishes_connection_error_from_missing_account(monkeypatch, tmp_path):
     monkeypatch.delenv("QISKIT_IBM_TOKEN", raising=False)
     monkeypatch.delenv("QISKIT_IBM_RUNTIME_APIKEY", raising=False)

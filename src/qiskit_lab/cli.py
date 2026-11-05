@@ -267,6 +267,7 @@ def doctor(args):
                 "saved_account_file_exists": (Path.home() / ".qiskit/qiskit-ibm.json").exists()}
     if args.online:
         response["backends"] = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
+        response["queried_at"] = now()
         response["connected"] = bool(response["backends"])
         if not response["connected"]:
             raise UserError("IBM accepted the account but no hardware backends are accessible; check the instance CRN.")

@@ -57,7 +57,7 @@ python3 scripts/dam/deploy.py --name 'Qiskit Lab'
 
 The installer uses your preferred DAM model provider, creates the agent, configures networking, imports **only Git-tracked files** into `~/work/qiskit-lab`, and starts onboarding. The tool wrapper installs the locked Qiskit environment in DAM before its first command. If the provider offers one model, it selects it automatically; otherwise pass `--model`. It excludes `.git`, credentials, local environments and results. The agent receives the private source without needing a GitHub connection.
 
-Options: `--provider 'Provider name'`, `--model ALIAS/MODEL_ID`, `--instance CRN` (not a secret), and `--no-run`. The agent and session IDs are saved in `.dam-deploy/deployment.json`, which Git ignores. If deployment fails after creating the agent, use `--existing` to resume deliberately.
+Options: `--provider 'Provider name'`, `--model ALIAS/MODEL_ID`, `--instance CRN` (not a secret), `--dry-run`, and `--no-run`. The agent and session IDs are saved in `.dam-deploy/deployment.json`, which Git ignores. If deployment fails after creating the agent, use `--existing` to resume deliberately. Use `--existing --agent AGENT_ID` to target an exact agent, including when names are duplicated.
 
 ```sh
 dam connection list --providers
@@ -200,11 +200,21 @@ CI runs these checks on Linux: algorithms, QASM, joint correlations, QAOA, singl
 
 ```sh
 git pull
-python3 scripts/dam/deploy.py --name 'Qiskit Lab' --existing --no-run
+# Preview the exact target and tracked files without changing DAM.
+python3 scripts/dam/deploy.py --existing --agent AGENT_ID --dry-run
+python3 scripts/dam/deploy.py --existing --agent AGENT_ID --no-run
 dam run 'Qiskit Lab' -p 'In ~/work/qiskit-lab run bash scripts/dam/setup.sh and verify IBM connectivity; do not submit jobs.'
 ```
 
-On DAM 0.2.24, importing can replace the entire source directory. Download artifacts you want to retain with `dam file get` first. The SDK account is outside that directory. Do not delete the agent to update it: deletion also removes its account and data.
+Existing-agent updates upload each tracked source file with `dam file put`.
+They preserve experiment artifacts, job receipts, notifications, the installed
+environment, owner files and existing networking rules. Files removed from Git
+remain in DAM; review obsolete source files separately. An interrupted upload
+can leave mixed source versions: rerun the same update to finish it before using
+the kit. The deployer refreshes managed reporting instructions when needed while
+preserving the schedule's enabled state, recurrence, timezone and model.
+The SDK account stays outside the project directory. Do not delete the agent to
+update it: deletion also removes its account and data.
 
 If IBM access fails, check the API key, instance CRN, and rules for `iam.cloud.ibm.com`, `resource-controller.cloud.ibm.com`, `api.global-search-tagging.cloud.ibm.com`, `globalcatalog.cloud.ibm.com`, `quantum.cloud.ibm.com`, and the regional endpoint (`us-east.quantum.cloud.ibm.com` or `eu-de.quantum.cloud.ibm.com`). For another region, add the IBM hostname to the agent's DAM networking rules.
 

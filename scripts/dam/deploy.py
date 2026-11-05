@@ -126,6 +126,30 @@ def import_when_ready(agent_id, package):
             time.sleep(5)
 
 
+def update_existing(agent_id, package):
+    """Overwrite only packaged source files; never replace a workspace directory."""
+    files = sorted(path for path in package.rglob("*") if path.is_file())
+    for index, path in enumerate(files, 1):
+        relative = path.relative_to(package).as_posix()
+        print(f"Update source [{index}/{len(files)}]: {relative}", flush=True)
+        run(["dam", "file", "put", agent_id, str(path), f"work/qiskit-lab/{relative}", "--overwrite"])
+    return {"mode": "source-files-only", "files_updated": len(files), "preserves_existing_files": True}
+
+
+def select_agent(agents, name, agent_id, existing):
+    if agent_id and not existing:
+        raise RuntimeError("--agent requires --existing; it never creates a replacement agent.")
+    matches = [agent for agent in agents if agent.get("id") == agent_id] if agent_id else [
+        agent for agent in agents if agent["name"] == name]
+    if len(matches) > 1:
+        raise RuntimeError("Agent name is ambiguous. Use --existing --agent AGENT_ID to target it explicitly.")
+    if matches and not existing:
+        raise RuntimeError("Agent already exists. Use --existing only to deliberately update its qiskit-lab folder.")
+    if not matches and existing:
+        raise RuntimeError("--existing requires an agent that already exists; check --agent or --name.")
+    return matches[0] if matches else None
+
+
 def merge_home_instructions(existing):
     if (HOME_START in existing) != (HOME_END in existing):
         raise RuntimeError("Incomplete Qiskit Lab instructions block; preserving the home instructions unchanged.")
@@ -148,7 +172,14 @@ def configure_report_schedule(agent_id):
     if len(matches) > 1:
         raise RuntimeError("Multiple completion-report schedules found; keep one active schedule in DAM.")
     if matches:
-        return matches[0]
+        schedule = matches[0]
+        if (schedule.get("task") == REPORT_TASK and schedule.get("precheck") == REPORT_PRECHECK
+                and schedule.get("sessionMode") == "fresh"):
+            return schedule
+        # Refresh managed reporting instructions without changing the owner's
+        # enabled state, recurrence, timezone, model or quiet hours.
+        return run(["dam", "schedule", "update", schedule["id"], "--task", REPORT_TASK,
+                    "--precheck", REPORT_PRECHECK, "--session-mode", "fresh", "--json"], as_json=True)
     return run(["dam", "schedule", "create", agent_id, "--name", REPORT_SCHEDULE_NAME,
                 "--every", "2m", "--session-mode", "fresh", "--precheck", REPORT_PRECHECK,
                 "--task", REPORT_TASK, "--json"], as_json=True)
@@ -161,24 +192,27 @@ def main():
     cli.add_argument("--provider", help="Existing DAM model provider; defaults to your preferred provider")
     cli.add_argument("--model", help="Optional model from dam agent models")
     cli.add_argument("--instance", help="Non-secret IBM Quantum instance CRN")
-    cli.add_argument("--existing", action="store_true", help="Explicitly re-import code into an existing named agent")
+    cli.add_argument("--existing", action="store_true", help="Update source files while preserving existing workspace data")
+    cli.add_argument("--agent", help="Exact existing DAM agent ID; requires --existing")
+    cli.add_argument("--dry-run", action="store_true", help="Validate source and show the target without changing DAM")
     cli.add_argument("--no-run", action="store_true", help="Import and configure only; do not start onboarding")
     args = cli.parse_args()
     agents = run(["dam", "agent", "list", "--json"], as_json=True)
-    matches = [agent for agent in agents if agent["name"] == args.name]
-    if len(matches) > 1:
-        raise RuntimeError("Agent name is ambiguous. Choose a unique name.")
-    if matches and not args.existing:
-        raise RuntimeError("Agent already exists. Use --existing only to deliberately update its qiskit-lab folder.")
-    if not matches and args.existing:
-        raise RuntimeError("--existing requires an agent that already exists.")
+    agent = select_agent(agents, args.name, args.agent, args.existing)
     # Validate the package before creating any platform resources.
     with tempfile.TemporaryDirectory(prefix="qiskit-lab-dam-") as temporary:
         package = Path(temporary) / "qiskit-lab"
         package.mkdir()
         copy_tracked(package)
-        if matches:
-            agent_id = matches[0]["id"]
+        name = agent["name"] if agent else args.name
+        if args.dry_run:
+            print(json.dumps({"dry_run": True, "agent_id": agent["id"] if agent else None, "name": name,
+                              "mode": "source-files-only" if agent else "new-agent",
+                              "files": sorted(path.relative_to(package).as_posix()
+                                              for path in package.rglob("*") if path.is_file())}, indent=2))
+            return 0
+        if agent:
+            agent_id = agent["id"]
         else:
             command = ["dam", "agent", "create", args.name, "--template", args.template,
                        "--description", "Qiskit Lab: Qiskit and IBM Quantum Platform", "--json"]
@@ -188,20 +222,21 @@ def main():
                 command += ["--env", "QISKIT_IBM_INSTANCE=" + args.instance]
             created = run(command, as_json=True)
             agent_id = created["id"]
-        deployment = {"agent_id": agent_id, "name": args.name, "source_commit": run(["git", "rev-parse", "HEAD"])}
+        deployment = {"agent_id": agent_id, "name": name, "source_commit": run(["git", "rev-parse", "HEAD"])}
         state_path = ROOT / ".dam-deploy/deployment.json"
         state_path.parent.mkdir(exist_ok=True)
         state_path.write_text(json.dumps(deployment, indent=2) + "\n")
-        print(f"Agent: {args.name} ({agent_id})", flush=True)
-        run(["dam", "network", "apply-preset", agent_id, "--preset", "trusted", "--json"], as_json=True)
+        print(f"Agent: {name} ({agent_id})", flush=True)
+        if not agent:
+            run(["dam", "network", "apply-preset", agent_id, "--preset", "trusted", "--json"], as_json=True)
         rules = run(["dam", "network", "list", agent_id, "--json"], as_json=True)
         existing_hosts = {rule.get("host") for rule in rules if rule.get("verdict") == "allow"}
         for host in HOSTS:
             if host not in existing_hosts:
                 print(f"Allow network: {host}", flush=True)
                 run(["dam", "network", "create", agent_id, "--host", host, "--yes", "--json"], as_json=True)
-        imported = import_when_ready(agent_id, package)
-        print("Tracked project imported into ~/work/qiskit-lab.", flush=True)
+        imported = update_existing(agent_id, package) if agent else import_when_ready(agent_id, package)
+        print("Tracked source installed in ~/work/qiskit-lab; existing workspace data preserved.", flush=True)
         install_home_instructions(agent_id, temporary)
         deployment["import"] = imported
         state_path.write_text(json.dumps(deployment, indent=2) + "\n")
@@ -214,7 +249,7 @@ def main():
                                             "--async", "--json"], as_json=True)
         state_path.write_text(json.dumps(deployment, indent=2) + "\n")
         print(json.dumps(deployment, indent=2))
-        print(f"Open DAM and select {args.name}; or run: dam chat {agent_id}")
+        print(f"Open DAM and select {name}; or run: dam chat {agent_id}")
     return 0
 
 
