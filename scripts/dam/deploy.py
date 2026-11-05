@@ -25,7 +25,10 @@ debe pedir al usuario que configure su API key de IBM Quantum, mostrar el comand
 de configuración con prompt oculto en su propia Terminal de DAM y ofrecer el
 simulador local. No ejecutes demostraciones antes de esta invitación. No solicites
 la clave como texto o formulario del chat, no leas credenciales ni ejecutes tú el
-prompt oculto. Si la cuenta ya está verificada, reutilízala. No envíes jobs a QPU.
+prompt oculto. Menciona QISKIT_IBM_TOKEN como variable de la API key, el alias
+QISKIT_IBM_RUNTIME_APIKEY y QISKIT_IBM_INSTANCE para el CRN; el prompt oculto guarda
+la cuenta del SDK y no requiere esas variables. Si la cuenta ya está verificada,
+reutilízala. No envíes jobs a QPU.
 """
 HOME_START = "<!-- qiskit-lab:instructions:start -->"
 HOME_END = "<!-- qiskit-lab:instructions:end -->"
@@ -37,6 +40,9 @@ read ~/work/qiskit-lab/AGENTS.md and ~/work/qiskit-lab/ONBOARDING.md, then run
 If status is needs_credentials, your FIRST reply asks the owner to configure
 their IBM Quantum API key and optional instance CRN, shows the returned command
 for their own DAM Terminal with hidden input, and offers local simulation.
+Name QISKIT_IBM_TOKEN as the API-key variable, QISKIT_IBM_RUNTIME_APIKEY as its
+supported alias and QISKIT_IBM_INSTANCE for the CRN. Hidden setup saves the SDK
+account instead, so setting environment variables is optional.
 Do not collect the key in chat or a masked chat form; both enter the transcript.
 Do not run algorithm demos before that invitation. If ready, reuse the verified
 account without asking again. Explain a connection_error without reading secrets.

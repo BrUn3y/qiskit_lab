@@ -8,7 +8,10 @@ At the beginning of every new chat, run `scripts/dam/quantum onboarding` before
 answering the first user message. If it reports `needs_credentials`, the first
 reply must ask the owner to configure their IBM Quantum API key, show the
 returned setup command for their own DAM Terminal, and offer local simulation
-as an alternative. Do not run algorithm demos before this first setup invitation.
+as an alternative. State the API-key variable `QISKIT_IBM_TOKEN`, supported alias
+`QISKIT_IBM_RUNTIME_APIKEY`, and instance variable `QISKIT_IBM_INSTANCE`. Explain
+that hidden setup saves an SDK account instead, so variables are optional.
+Do not run algorithm demos before this first setup invitation.
 Never collect the key as chat text or in a chat form: even masked fields enter
 DAM's transcript. A `ready` response means reuse the existing verified account;
 do not ask for its API key again. A `connection_error` is a failed live check,

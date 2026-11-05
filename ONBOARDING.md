@@ -8,7 +8,12 @@ Steps are safe to repeat; never submit a hardware job during onboarding.
    necesito que configures tu API key y, si lo tienes, el CRN de tu instancia."
    Explain the hidden entry step below and offer "Configurar IBM Quantum" or
    "Continuar con simulador". Do not run or narrate algorithm demos before this
-   invitation. Do not put an API-key text/password field in a DAM chat form:
+   invitation. Name the API-key environment variable `QISKIT_IBM_TOKEN` (alias
+   `QISKIT_IBM_RUNTIME_APIKEY`) and the instance variable `QISKIT_IBM_INSTANCE`.
+   Explain that the hidden setup saves an SDK account without requiring these
+   variables. An export in a separate terminal does not configure the agent's
+   other processes: environment variables must reach the actual tool process.
+   Do not put an API-key text/password field in a DAM chat form:
    DAM includes even masked fields in the transcript. Never echo a pasted key.
 2. If credentials are missing, ask the owner to open this agent's **Terminal**
    in DAM, `cd ~/work/qiskit-lab` (private CLI installation; for a catalog seed,

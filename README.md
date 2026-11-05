@@ -72,6 +72,17 @@ el historial. La clave se introduce directamente en la Terminal del agente.
 
 No pegues la clave en el chat ni la incluyas en Git. Esta configuración la ejecuta el propietario, no el modelo. Las conexiones `custom-header` de DAM entregan placeholders y no sustituyen la API key en el formulario de IBM IAM. Por eso se usa la cuenta persistente del SDK. La API key queda en el disco privado del agente y debe tratarse como credencial de ese agente.
 
+| Valor | Variable de entorno |
+|---|---|
+| API key de IBM Quantum | `QISKIT_IBM_TOKEN` |
+| Alias admitido para la API key | `QISKIT_IBM_RUNTIME_APIKEY` |
+| CRN de la instancia | `QISKIT_IBM_INSTANCE` |
+
+La bienvenida menciona estas variables. El prompt oculto guarda la cuenta del SDK,
+por lo que no requiere definirlas. Si eliges variables, deben estar disponibles
+en el proceso que ejecuta las herramientas; un `export` en otra terminal por sí
+solo no configura las herramientas del chat.
+
 Los comandos usan el canal `ibm_quantum_platform`. Para ejecución local también admiten `QISKIT_IBM_TOKEN` o `QISKIT_IBM_RUNTIME_APIKEY`, y opcionalmente `QISKIT_IBM_INSTANCE` / `QISKIT_IBM_RUNTIME_INSTANCE`, sin imprimirlos. Las QPUs accesibles dependen de tu cuenta, instancia y región.
 
 ## Usarlo desde el chat

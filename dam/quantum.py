@@ -228,8 +228,12 @@ def onboarding():
                 "message": "Para conectar Qiskit Lab a IBM Quantum necesito que configures tu API key "
                            "y, si lo tienes, el CRN de tu instancia. No pegues la clave en el chat: "
                            "abre la Terminal de este agente y ejecuta el comando de configuración. "
+                           "Si configuras el entorno del proceso, la variable de la API key es QISKIT_IBM_TOKEN "
+                           "(también se admite QISKIT_IBM_RUNTIME_APIKEY); el CRN va en QISKIT_IBM_INSTANCE. "
                            "También puedes continuar con el simulador local.",
-                "setup_command": setup, "credential_entry": "hidden_terminal_prompt", "hardware_ready": False}
+                "setup_command": setup, "credential_entry": "hidden_terminal_prompt", "hardware_ready": False,
+                "api_key_env": "QISKIT_IBM_TOKEN", "api_key_env_alias": "QISKIT_IBM_RUNTIME_APIKEY",
+                "instance_env": "QISKIT_IBM_INSTANCE"}
     try:
         backends = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
     except Exception as error:  # noqa: BLE001 - Return safe SDK error classes without request bodies

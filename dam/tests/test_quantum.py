@@ -171,6 +171,9 @@ def test_first_chat_requests_setup_without_reading_credentials(monkeypatch, tmp_
     response = quantum.onboarding()
     assert response["status"] == "needs_credentials"
     assert response["credential_entry"] == "hidden_terminal_prompt"
+    assert response["api_key_env"] == "QISKIT_IBM_TOKEN"
+    assert response["api_key_env_alias"] == "QISKIT_IBM_RUNTIME_APIKEY"
+    assert response["instance_env"] == "QISKIT_IBM_INSTANCE"
     assert "API key" in response["message"]
     assert "configure-quantum.py" in response["setup_command"]
     assert not response["hardware_ready"]

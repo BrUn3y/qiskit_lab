@@ -46,6 +46,11 @@ At the start of a new chat run `scripts/dam/quantum onboarding`. If it returns
 Quantum API key and CRN, shows the command below, and offers local simulation
 until setup is complete. If `ready`, reuse the account without asking again.
 For connection errors, explain the failure; never inspect credential files.
+In the first setup invitation name `QISKIT_IBM_TOKEN` for the API key,
+`QISKIT_IBM_RUNTIME_APIKEY` as its supported alias, and `QISKIT_IBM_INSTANCE`
+for the instance CRN. Hidden setup saves an SDK account, so variables are optional.
+Variables must reach the tool's process; an export in another terminal alone
+does not configure subsequent chat tools.
 
 Never request an API key in chat. Show the user this command to run themselves
 in DAM's browser Terminal, from the project root:
