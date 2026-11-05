@@ -22,4 +22,14 @@ jobs:
       - run: uv run --locked ruff check src tests scripts/dam
       - run: uv run --locked qiskit-lab doctor
       - run: uv build
-      - run: bash -n scripts/dam/setup.sh scripts/dam/quantum
+      - run: bash -n scripts/dam/install.sh scripts/dam/setup.sh scripts/dam/quantum
+      - name: Install the native kit without credentials or algorithm demos
+        run: bash scripts/dam/install.sh --home "$RUNNER_TEMP/qiskit-kit-home"
+      - name: An empty job queue must skip the scheduled model
+        run: |
+          if bash "$RUNNER_TEMP/qiskit-kit-home/.local/bin/qiskit-lab-dam" poll-jobs --precheck; then
+            echo 'Expected an empty queue to skip the model.' >&2
+            exit 1
+          else
+            test "$?" -eq 1
+          fi

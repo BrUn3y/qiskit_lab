@@ -69,6 +69,7 @@ Never submit a hardware job during onboarding. Always respond in English.
 Every completed simulation, experiment and hardware job must have a Carbon HTML
 report. Return report_path as a supported DAM file link. Pending hardware jobs
 are checked by the Qiskit Lab job reports schedule; never resubmit them.
+Scheduled completion reporting skips first-chat onboarding and follows its task.
 {HOME_END}"""
 HOME_CLAUDE_INSTRUCTIONS = f"""{HOME_START}
 @AGENTS.md

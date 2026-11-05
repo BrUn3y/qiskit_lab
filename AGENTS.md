@@ -48,7 +48,10 @@ CLI returns `report_path`; always give the owner a supported DAM workspace file
 link to that report. Keep code, reports and responses in English. If `report_error`
 is returned, disclose it and preserve the results; do not claim a report exists.
 Queued/running jobs do not have final reports. Do not wait indefinitely in chat.
-The installer creates a two-minute `Qiskit Lab job reports` schedule. Its precheck
+The native kit declares a two-minute `Qiskit Lab job reports` schedule; the
+private CLI deployer creates its equivalent. Do not duplicate platform-created
+schedules or enable ones the owner skipped or disabled. The native installer
+registers `~/.local/bin/qiskit-lab-dam` for the actual checkout path. Its precheck
 runs `poll-jobs --precheck`: this queries already accepted IDs, writes reports at
 DONE/ERROR/CANCELLED, and wakes the model only for unacknowledged notifications.
 It never submits QPU work. Run `scripts/dam/quantum poll-jobs` to retrieve pending

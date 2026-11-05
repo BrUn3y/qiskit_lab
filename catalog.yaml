@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dam-agents/dam-starter-kits/main/catalog.schema.json
+# A standalone catalog and the entry to propose to the curated catalog.
+# Public GitHub readers can resolve it only when this repository is public.
+kits:
+  - url: https://github.com/BrUn3y/qiskit_lab

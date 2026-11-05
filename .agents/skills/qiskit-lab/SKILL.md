@@ -88,8 +88,12 @@ For hardware, `job JOB_ID` generates the report only at DONE, ERROR or CANCELLED
 failed and cancelled jobs have no invented counts. Result-download failures are
 retried on the next read-only poll. No QPU job is resubmitted.
 
-The private deployer installs a two-minute DAM schedule with
-`bash scripts/dam/quantum poll-jobs --precheck`. The precheck polls tracked receipts
+The native kit declares a two-minute DAM schedule whose precheck runs
+`bash ~/.local/bin/qiskit-lab-dam poll-jobs --precheck`. Its installed wrapper
+selects the seeded checkout without assuming a repository basename. The private
+CLI deployer creates an equivalent schedule for its imported checkout. Do not
+duplicate schedules the platform created or enable any the owner disabled or
+skipped. The precheck polls tracked receipts
 under `artifacts/dam/`, generates terminal reports, and skips the model when no
 completion notification is pending. The scheduled task presents report links and
 then runs `poll-jobs --ack JOB_ID` for each delivered report. The durable queue

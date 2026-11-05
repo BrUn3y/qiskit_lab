@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import sys
 import time
@@ -276,7 +277,7 @@ def doctor(args):
 
 def onboarding():
     """Describe the first-chat connection step without opening credential files."""
-    setup = "cd ~/work/qiskit-lab && uv run --locked python scripts/dam/configure-quantum.py"
+    setup = f"cd {shlex.quote(str(Path.cwd()))} && uv run --locked python scripts/dam/configure-quantum.py"
     request = {"status": "needs_credentials", "channel": "ibm_quantum_platform",
                 "message": "To connect Qiskit Lab to IBM Quantum, configure your API key and, if available, "
                            "your instance CRN. Do not paste the key into chat: open this agent's Terminal "

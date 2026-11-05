@@ -16,7 +16,7 @@ seed:
   self: true
   into: work
 install:
-  command: bash scripts/dam/setup.sh
+  command: bash scripts/dam/install.sh
 egressPreset: trusted
 egressRules:
   - host: pypi.org
@@ -31,11 +31,28 @@ egressRules:
   - host: us-east.quantum.cloud.ibm.com
   - host: eu-de.quantum.cloud.ibm.com
 resources:
-  cpu: "2"
-  memory: 4Gi
   storage: 10Gi
-  note: Recommended for local statevector simulation; kit resources are advisory.
+  note: Space for the locked Qiskit environment, experiment artifacts and offline HTML reports.
 bundledSkills:
   path: .agents/skills
-onboarding:
-  prompt: Read AGENTS.md and follow ONBOARDING.md. Run scripts/dam/quantum onboarding before your first reply. If the account is missing, first invite the owner to configure the IBM Quantum API key using the hidden Terminal prompt; offer local simulation. Reuse an existing verified account. Never collect a key in chat or submit a QPU job during onboarding.
+# IBM credentials use the owner's hidden SDK account setup, not chat parameters
+# or a custom-header connection. The default briefing follows ONBOARDING.md and
+# keeps this schedule held until the agent marks onboarding complete.
+schedules:
+  - name: Qiskit Lab job reports
+    rrule: FREQ=MINUTELY;INTERVAL=2
+    timezone: Etc/UTC
+    enabled: true
+    sessionMode: fresh
+    precheck: bash ~/.local/bin/qiskit-lab-dam poll-jobs --precheck
+    task: >-
+      This is scheduled completion reporting, not first-time onboarding.
+      Read ~/AGENTS.md and the Qiskit Lab project instructions it references.
+      Run bash ~/.local/bin/qiskit-lab-dam poll-jobs.
+      For each pending notification, present the existing Carbon HTML report
+      as a supported DAM workspace file link, with job ID, backend and final state.
+      Only after presenting the link, run bash ~/.local/bin/qiskit-lab-dam poll-jobs
+      --ack JOB_ID for that delivered job. Never acknowledge an undelivered report.
+      Explain safe error classes and preserve tracking when a query fails.
+      Never submit, retry, cancel or modify IBM jobs. Never read credentials.
+      Use English. Do not run onboarding, demos or unrelated file scans.

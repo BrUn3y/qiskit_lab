@@ -42,7 +42,49 @@ HTML report inside DAM.
 
 ![QAOA circuit and scientific dashboard displayed inside DAM](docs/images/dam-qaoa-circuit-dashboard.png)
 
-## Install from the private repository
+## Install as a DAM starter kit
+
+The root [`kit.yaml`](kit.yaml) follows the
+[official DAM starter-kit format](https://github.com/dam-agents/dam-starter-kits).
+It seeds this repository at the catalog's resolved commit, installs the locked
+Qiskit SDK environment, advertises the bundled `qiskit-lab` skill, and declares
+the two-minute job-report schedule. It uses the platform's default model and
+harness selection, plus the IBM network hosts the SDK needs.
+
+The platform runs `bash scripts/dam/install.sh` inside the seeded checkout before
+opening onboarding. That command installs home instruction entry points and
+`~/.local/bin/qiskit-lab-dam`, which points to the actual checkout. It does not
+run a circuit, read credentials, or submit IBM work. The first conversation
+follows [`ONBOARDING.md`](ONBOARDING.md): choose local simulation or configure
+IBM access using the owner-only hidden Terminal prompt. The platform holds
+recurring schedules until onboarding completes; schedules the owner skips or
+disables stay that way. No Node.js or local DAM CLI is needed for native install.
+
+For a **public** GitHub repository, use DAM's **Add by link** with
+`https://github.com/BrUn3y/qiskit_lab`, or open
+[the linked-kit installation page](https://dam.res.ibm.com/starter-kits/link/BrUn3y/qiskit_lab).
+For curated discovery, propose the repository entry in the root
+[`catalog.yaml`](catalog.yaml) to `dam-agents/dam-starter-kits/catalog.yaml`.
+The same file can serve as a standalone catalog:
+
+```yaml
+starterKits:
+  catalogs:
+    - name: quantum
+      url: https://github.com/BrUn3y/qiskit_lab
+```
+
+That catalog addresses the kit as `quantum/qiskit-lab`. Public GitHub catalog and
+linked-kit reads are anonymous: this repository must be public before either
+can resolve it. Adapting the kit does not change repository visibility, publish
+it in the curated catalog, or convert an existing plain agent into a kit-created
+agent. While the repository is private, use the CLI fallback below.
+
+Validate both manifests offline with `uv run --locked pytest -q tests/test_kit.py`.
+The generated upstream schemas and their source commit are documented in
+[`dam/README.md`](dam/README.md).
+
+## Private repository CLI fallback
 
 Requirements: Python 3.11–3.13 and [uv](https://docs.astral.sh/uv/). Deployment from your machine additionally requires Git, Node.js 20+ and **DAM CLI 0.2.24**. The root `pyproject.toml` declares the required Qiskit SDK packages; `uv.lock` pins the complete environment.
 
@@ -65,17 +107,20 @@ dam agent models 'Qiskit Lab'
 dam agent update 'Qiskit Lab' --model ALIAS/MODEL_ID
 ```
 
-**DAM limitation:** adding a kit by repository link supports only public GitHub repositories. Do not paste this private URL into that form. The installer uses the supported CLI path and creates a regular agent without a starter-kit badge. `kit.yaml` follows the official format and can be added to an administrator-managed catalog with repository access.
+The CLI fallback creates a regular agent without a starter-kit badge or the
+platform's kit onboarding gate. A private repository on `github.com` cannot be
+resolved by the anonymous linked-kit or catalog readers. A platform-managed
+GitHub Enterprise catalog is a separate operator-configured capability.
 
 ## Connect IBM Quantum Platform
 
 The first response in a new chat checks the connection. If the account is missing, Qiskit Lab asks you to configure your API key, shows the hidden-entry command, and offers local simulation. It reuses an account that already works. The installer adds these instructions to `~/AGENTS.md` and a native `@AGENTS.md` import to `~/CLAUDE.md`, preserving existing owner instructions in both files. Claude Code can load the startup rules before its first response, as can harnesses that load `AGENTS.md` directly.
 
 1. Open **Qiskit Lab** in [DAM](https://dam.res.ibm.com/) and open its **Terminal**.
-2. Run this command yourself in that terminal:
+2. Run the `setup_command` returned by onboarding yourself in that terminal.
+   It includes the actual checkout path. Equivalently, from that checkout run:
 
    ```sh
-   cd ~/work/qiskit-lab
    uv run --locked python scripts/dam/configure-quantum.py
    ```
 
@@ -124,9 +169,11 @@ paginated state tables, downloadable JSON/OpenQASM, source circuit, and the
 scientific dashboard. QAOA reports also include the optimization trace and exact
 classical comparison. Missing IBM metadata is marked unavailable.
 
-For IBM hardware, submission still returns immediately. The deployer installs
+For IBM hardware, submission still returns immediately. The native kit declares
 **Qiskit Lab job reports**, a DAM schedule that checks tracked jobs every **two
-minutes**. Its precheck queries existing IDs and writes the final HTML when DONE,
+minutes**; the private CLI deployer creates its equivalent. The native precheck
+uses `bash ~/.local/bin/qiskit-lab-dam poll-jobs --precheck`, so it works wherever
+the platform seeds the checkout. It queries existing IDs and writes final HTML when DONE,
 ERROR or CANCELLED; it invokes the model only when a report needs to be announced.
 No report step submits another hardware job. Failed/cancelled jobs receive a
 status report without fabricated counts. Report delivery appears in the DAM
@@ -198,12 +245,20 @@ CI runs these checks on Linux: algorithms, QASM, joint correlations, QAOA, singl
 
 ## Update an existing deployment
 
+For a kit-created agent, use DAM's **Kit Update** workflow and rerun the
+checkout's `bash scripts/dam/install.sh` after the reviewed update to refresh
+the locked environment and instruction entry points. Preserve existing results
+and owner files. Do not recreate skipped schedules or replace owner-selected
+cadence, models or enabled states.
+
+For the private CLI fallback:
+
 ```sh
 git pull
 # Preview the exact target and tracked files without changing DAM.
 python3 scripts/dam/deploy.py --existing --agent AGENT_ID --dry-run
 python3 scripts/dam/deploy.py --existing --agent AGENT_ID --no-run
-dam run 'Qiskit Lab' -p 'In ~/work/qiskit-lab run bash scripts/dam/setup.sh and verify IBM connectivity; do not submit jobs.'
+dam run AGENT_ID -p 'In ~/work/qiskit-lab verify IBM connectivity; do not submit jobs or run demos.'
 ```
 
 Existing-agent updates upload each tracked source file with `dam file put`.

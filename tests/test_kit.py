@@ -25,8 +25,29 @@ def test_kit_matches_official_schema_and_bootstrap_files_exist():
     assert kit["seed"] == {"self": True, "into": "work"}
     assert (ROOT / "ONBOARDING.md").exists()
     assert (ROOT / kit["bundledSkills"]["path"] / "qiskit-lab/SKILL.md").exists()
-    assert not kit.get("schedules")
+    assert kit["install"]["command"] == "bash scripts/dam/install.sh"
+    assert (ROOT / "scripts/dam/install.sh").exists()
+    assert "onboarding" not in kit  # Use the platform briefing and owner-only checklist.
     assert not kit.get("env")
+    assert not kit.get("connections")
+    assert set(kit["resources"]) <= {"storage", "note"}
+
+
+def test_catalog_entry_matches_official_schema():
+    schema = json.loads((ROOT / "dam/catalog.schema.json").read_text())
+    catalog = yaml.safe_load((ROOT / "catalog.yaml").read_text())
+    jsonschema.Draft202012Validator(schema).validate(catalog)
+    assert catalog["kits"] == [{"url": "https://github.com/BrUn3y/qiskit_lab"}]
+
+
+def test_native_reporting_schedule_runs_only_the_installed_read_only_precheck(deploy):
+    kit = yaml.safe_load((ROOT / "kit.yaml").read_text())
+    assert len(kit["schedules"]) == 1
+    schedule = kit["schedules"][0]
+    assert schedule["name"] == deploy.REPORT_SCHEDULE_NAME
+    assert schedule["rrule"] == "FREQ=MINUTELY;INTERVAL=2"
+    assert schedule["sessionMode"] == "fresh"
+    assert schedule["precheck"] == "bash ~/.local/bin/qiskit-lab-dam poll-jobs --precheck"
 
 
 def test_deployer_network_rules_match_manifest():

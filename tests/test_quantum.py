@@ -184,6 +184,22 @@ def test_first_chat_requests_setup_without_reading_credentials(monkeypatch, tmp_
     offline.assert_not_called()
 
 
+def test_first_chat_setup_command_uses_the_actual_seed_checkout(monkeypatch, tmp_path, offline):
+    import shlex
+
+    monkeypatch.delenv("QISKIT_IBM_TOKEN", raising=False)
+    monkeypatch.delenv("QISKIT_IBM_RUNTIME_APIKEY", raising=False)
+    monkeypatch.setattr(quantum.Path, "home", lambda: tmp_path)
+    project = tmp_path / "a checkout's directory"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    response = quantum.onboarding()
+    command = shlex.split(response["setup_command"])
+    assert command[:3] == ["cd", str(project), "&&"]
+    assert command[-1] == "scripts/dam/configure-quantum.py"
+    offline.assert_not_called()
+
+
 def test_first_chat_reuses_verified_account_without_requesting_key(monkeypatch, tmp_path):
     monkeypatch.delenv("QISKIT_IBM_TOKEN", raising=False)
     monkeypatch.delenv("QISKIT_IBM_RUNTIME_APIKEY", raising=False)
