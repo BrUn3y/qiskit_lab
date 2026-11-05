@@ -111,7 +111,7 @@ def test_uncertain_submission_is_never_retried(monkeypatch, tmp_path):
     sampler.run.assert_called_once()
 
 
-def test_job_timeout_keeps_existing_id(monkeypatch):
+def test_job_timeout_keeps_existing_id(monkeypatch, tmp_path):
     job = Mock()
     job.job_id.return_value = "existing-job"
     job.backend.return_value = SimpleNamespace(name="ibm_test")
@@ -120,7 +120,8 @@ def test_job_timeout_keeps_existing_id(monkeypatch):
     service = Mock()
     service.job.return_value = job
     monkeypatch.setattr(quantum, "runtime_service", lambda: service)
-    response = quantum.inspect_job(quantum.parser().parse_args(["job", "existing-job", "--wait", "1"]))
+    response = quantum.inspect_job(quantum.parser().parse_args([
+        "job", "existing-job", "--wait", "1", "--output-dir", str(tmp_path)]))
     assert response["job_id"] == "existing-job"
     assert response["result_error"] == "TimeoutError"
     assert "must not show" not in str(response)
