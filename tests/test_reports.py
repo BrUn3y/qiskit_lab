@@ -131,3 +131,21 @@ def test_report_render_failure_preserves_measurements(monkeypatch, tmp_path):
     assert result['report_error'] == 'OSError'
     assert 'private-path' not in str(result)
     assert json.loads((directory / 'receipt.json').read_text())['counts'] == [{'00': 30, '11': 34}]
+
+
+def test_unavailable_ids_do_not_starve_later_jobs(monkeypatch, tmp_path):
+    job = fake_job(monkeypatch)
+    job.job_id.return_value = 'job-10'
+
+    def lookup(job_id):
+        if job_id != 'job-10':
+            raise ConnectionError('private-sdk-error')
+        return job
+
+    monkeypatch.setattr(cli, 'runtime_service', lambda: SimpleNamespace(job=lookup))
+    for index in range(11):
+        cli.save_json(tmp_path / f'run-{index:02d}' / 'receipt.json',
+                      {'job_id': f'job-{index:02d}', 'hardware': True, 'status': 'SUBMITTED'})
+    args = cli.parser().parse_args(['poll-jobs', '--output-dir', str(tmp_path)])
+    assert len(poll_jobs(args)['errors']) == 10
+    assert poll_jobs(args)['notifications'][0]['job_id'] == 'job-10'

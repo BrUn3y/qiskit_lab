@@ -209,6 +209,7 @@ def inspect_job(args):
     backend = job.backend()
     response.update(job_id=job.job_id(), backend=backend.name, status=str(job.status()), queried_at=now(),
                     hardware=True, artifacts=str(directory))
+    response.pop("poll_error", None)
     if response["status"] == "DONE" or (args.wait and response["status"] not in {"ERROR", "CANCELLED"}):
         try:
             response["counts"] = counts_from_result(job.result(timeout=args.wait or 30))
