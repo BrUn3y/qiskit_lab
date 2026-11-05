@@ -4,7 +4,7 @@ id: qiskit-lab
 name: Qiskit Lab
 tagline: Develop, simulate and execute quantum experiments on IBM Quantum Platform.
 description: >-
-  Adapts BrUn3y's Qiskit Lab to a DAM coding agent with Qiskit tools for
+  Runs a Qiskit SDK laboratory in DAM with tools for
   Bell, GHZ, Grover, Deutsch–Jozsa, live backend inspection, SamplerV2 QPU
   submission, job results, and locally validated QAOA Max-Cut experiments.
   IBM Quantum credentials are configured by the owner in a hidden terminal prompt.
@@ -25,6 +25,8 @@ egressRules:
   - host: release-assets.githubusercontent.com
   - host: iam.cloud.ibm.com
   - host: resource-controller.cloud.ibm.com
+  - host: api.global-search-tagging.cloud.ibm.com
+  - host: globalcatalog.cloud.ibm.com
   - host: quantum.cloud.ibm.com
   - host: us-east.quantum.cloud.ibm.com
   - host: eu-de.quantum.cloud.ibm.com

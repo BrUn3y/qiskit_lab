@@ -1,20 +1,13 @@
-FROM python:3.13-bookworm
-COPY --from=ghcr.io/astral-sh/uv:0.7.15 /uv /bin/
-
-ENV UV_LINK_MODE=copy \
-    PRODUCTION_MODE=true
-
-ADD . /app
+FROM python:3.12-slim
+COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /usr/local/bin/uv
+ENV UV_LINK_MODE=copy
 WORKDIR /app
-
-RUN uv sync --no-cache --locked --link-mode copy
-
-ENV PRODUCTION_MODE=True \
-    PATH="/app/.venv/bin:$PATH" \
-    HOME=/tmp \
-    LAB_HOST=0.0.0.0 \
-    DEVELOPER_HOST=host.docker.internal \
-    STATUS_HOST=host.docker.internal \
-    COMPUTING_HOST=host.docker.internal
-
-CMD ["uv", "run", "--no-sync", "server"]
+COPY pyproject.toml uv.lock README.md ./
+COPY src ./src
+RUN uv sync --locked --no-dev
+RUN useradd --create-home --uid 1000 agent && mkdir /workspace && chown agent:agent /workspace
+ENV PATH="/app/.venv/bin:$PATH"
+USER agent
+WORKDIR /workspace
+ENTRYPOINT ["qiskit-lab"]
+CMD ["--help"]

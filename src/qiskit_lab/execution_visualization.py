@@ -1,4 +1,4 @@
-"""Canvas-ready visualization for completed quantum circuit executions."""
+"""Visualizations for completed Qiskit circuit executions."""
 
 from __future__ import annotations
 
@@ -13,13 +13,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, FancyBboxPatch
-
-
-RESULT_CANVAS_MARKER = re.compile(r"__QUANTUM_RESULT_CANVAS__:(.+)")
-
-
-def result_canvas_marker(path: str | Path) -> str:
-    return f"__QUANTUM_RESULT_CANVAS__:{Path(path)}"
 
 
 def _draw_circuit(ax, circuit, instructions) -> None:

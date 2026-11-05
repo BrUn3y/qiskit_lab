@@ -1,4 +1,4 @@
-"""Deterministic hybrid quantum experiments used by the Experiment Agent."""
+"""Deterministic QAOA Max-Cut experiments built with the Qiskit SDK."""
 
 from __future__ import annotations
 
@@ -17,7 +17,6 @@ from qiskit.quantum_info import Statevector
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 
 _NODE_COUNT_PATTERN = re.compile(
     r"\b(\d+)\s*(?:-?node|nodos?|vertices|v[eé]rtices|qubits?)\b", re.IGNORECASE

@@ -18,7 +18,7 @@ Steps are safe to repeat; never submit a hardware job during onboarding.
 2. If credentials are missing, ask the owner to open this agent's **Terminal**
    in DAM, `cd ~/work/qiskit-lab` (private CLI installation; for a catalog seed,
    use the checkout directory the platform briefing gives), and run:
-   `uv run --locked --project dam python scripts/dam/configure-quantum.py`.
+   `uv run --locked python scripts/dam/configure-quantum.py`.
    The owner supplies the instance CRN and API key directly to a hidden prompt.
    Do not run that command with model tools, do not ask for the key in chat,
    and do not open credential files. Wait for the owner to finish.

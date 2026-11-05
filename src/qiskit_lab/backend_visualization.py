@@ -7,18 +7,15 @@ import re
 import statistics
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
 import rustworkx as rx
-
-
-BACKEND_CANVAS_MARKER = re.compile(r"__QUANTUM_BACKEND_CANVAS__([^\n]+?)__END_BACKEND_CANVAS__")
+from matplotlib.colors import Normalize
 
 
 def _qubit_values(properties, name: str) -> list[float]:
@@ -157,6 +154,3 @@ def render_backend_dashboard(backend) -> str:
     plt.close(figure)
     return os.fspath(output_path)
 
-
-def canvas_marker(path: str) -> str:
-    return f"__QUANTUM_BACKEND_CANVAS__{path}__END_BACKEND_CANVAS__"

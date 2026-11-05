@@ -7,7 +7,7 @@ import jsonschema
 import pytest
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_kit_matches_official_schema_and_bootstrap_files_exist():

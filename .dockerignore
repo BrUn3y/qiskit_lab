@@ -1,0 +1,13 @@
+.git
+.venv
+dam/.venv
+.env
+.env.*
+!.env.example
+.dam-deploy
+artifacts
+**/.qiskit
+**/__pycache__
+.pytest_cache
+.ruff_cache
+dist

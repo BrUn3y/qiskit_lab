@@ -57,7 +57,7 @@ env/
 config/secrets.yml
 config/credentials.yml
 
-# IBM Quantum and Watsonx credentials
+# IBM Quantum credentials
 **/qiskit-ibm.json
 **/.qiskit/
 *token*

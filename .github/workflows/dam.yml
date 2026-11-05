@@ -16,8 +16,10 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-          cache-dependency-glob: dam/uv.lock
-      - run: uv sync --locked --project dam
-      - run: uv run --locked --project dam pytest dam/tests -q
-      - run: uv run --locked --project dam ruff check dam scripts/dam
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - run: uv run --locked pytest -q
+      - run: uv run --locked ruff check src tests scripts/dam
+      - run: uv run --locked qiskit-lab doctor
+      - run: uv build
       - run: bash -n scripts/dam/setup.sh scripts/dam/quantum

@@ -2,7 +2,7 @@
 
 A quantum computing workspace in [DAM](https://dam.res.ibm.com/), connected to **IBM Quantum Platform** through Qiskit Runtime and `SamplerV2`.
 
-This private edition derives from [BrUn3y/quantum_lab_agent](https://github.com/BrUn3y/quantum_lab_agent), base commit `9dfdc42`. It preserves the five original agents and adapts their capabilities to a native DAM agent. It directly reuses the original QAOA engine and backend/result visualization modules. See [README.legacy.md](README.legacy.md) for the previous deployment.
+Qiskit Lab is a native Python package using the Qiskit SDK for circuit development, simulation, experiments, and hardware execution. DAM supplies the chat model and workspace. The application code lives in `src/qiskit_lab` and calls Qiskit directly.
 
 ```mermaid
 flowchart LR
@@ -14,30 +14,31 @@ flowchart LR
     T --> F[JSON / QASM / PNG artifacts]
 ```
 
-| Original capability | DAM implementation |
+| Capability | Implementation |
 |---|---|
-| Lab | DAM harness and model; instructions in `AGENTS.md` |
+| Orchestration | DAM harness and model; instructions in `AGENTS.md` |
 | Developer | Qiskit/OpenQASM development; Bell, GHZ, Grover and Deutsch–Jozsa examples |
 | Status | Accessible QPUs, queues, status, operations and topology |
 | Computing | Local simulation; ISA transpilation and one fresh `SamplerV2` job when requested |
 | Experiment | QAOA Max-Cut p=1, 2–8 nodes, exact classical validation and PNG |
 | Results | Job IDs, joint counts, JSON receipts, QASM, circuit diagrams and distribution comparisons |
 
-The native DAM path requires no Ollama or A2A servers. QAOA remains experimental; this kit does not implement a general VQE optimizer. Visualizations are files for DAM. Agent Stack Canvas markers belong to the legacy path. Code, documentation and agent responses use English.
+Both **`qiskit` and `qiskit-ibm-runtime` are required dependencies** and must be installed before using the tools. QAOA remains experimental; this kit does not implement a general VQE optimizer. Code, documentation and agent responses use English.
 
 ## Install from the private repository
 
-Local requirements: Node.js 20+, **DAM CLI 0.2.24**, Git and Python 3.11+. The agent uses `uv`; `dam/uv.lock` pins the quantum dependencies without installing BeeAI or Agent Stack.
+Requirements: Python 3.11–3.13 and [uv](https://docs.astral.sh/uv/). Deployment from your machine additionally requires Git, Node.js 20+ and **DAM CLI 0.2.24**. The root `pyproject.toml` declares the required Qiskit SDK packages; `uv.lock` pins the complete environment.
 
 ```sh
 npm install -g @dam-agents/cli@0.2.24
 dam auth login --server https://dam.res.ibm.com
 git clone https://github.com/BrUn3y/qiskit_lab.git
 cd qiskit_lab
+uv sync --locked  # Required: installs Qiskit, IBM Runtime and the qiskit-lab command.
 python3 scripts/dam/deploy.py --name 'Qiskit Lab'
 ```
 
-The installer uses your preferred DAM model provider, creates the agent, configures networking, imports **only Git-tracked files** into `~/work/qiskit-lab`, and starts onboarding. If the provider offers one model, it selects it automatically; otherwise pass `--model`. It excludes `.git`, credentials, local environments and results. The agent receives the private source without needing a GitHub connection.
+The installer uses your preferred DAM model provider, creates the agent, configures networking, imports **only Git-tracked files** into `~/work/qiskit-lab`, and starts onboarding. The tool wrapper installs the locked Qiskit environment in DAM before its first command. If the provider offers one model, it selects it automatically; otherwise pass `--model`. It excludes `.git`, credentials, local environments and results. The agent receives the private source without needing a GitHub connection.
 
 Options: `--provider 'Provider name'`, `--model ALIAS/MODEL_ID`, `--instance CRN` (not a secret), and `--no-run`. The agent and session IDs are saved in `.dam-deploy/deployment.json`, which Git ignores. If deployment fails after creating the agent, use `--existing` to resume deliberately.
 
@@ -58,13 +59,13 @@ The first response in a new chat checks the connection. If the account is missin
 
    ```sh
    cd ~/work/qiskit-lab
-   uv run --locked --project dam python scripts/dam/configure-quantum.py
+   uv run --locked python scripts/dam/configure-quantum.py
    ```
 
 3. Enter your instance CRN and API key from [IBM Quantum Platform](https://quantum.cloud.ibm.com/). The API key uses a hidden prompt. The program verifies QPU access before saving the SDK account in `~/.qiskit/qiskit-ibm.json` with permissions `600`.
 4. Return to chat and say: **“Verify the IBM Quantum Platform connection and show my available QPUs.”**
 
-Do not paste the key into chat or commit it to Git. The owner runs credential setup directly. DAM chat password fields also enter the transcript as plain text. DAM `custom-header` connections provide placeholders and cannot insert an API key into IBM IAM's form body. This kit therefore uses the persistent SDK account. The API key remains on the agent's private disk and must be treated as an agent credential.
+Do not paste the key into chat or commit it to Git. The owner runs credential setup directly. DAM chat password fields also enter the transcript as plain text. DAM `custom-header` connections provide placeholders and cannot insert an API key into IBM IAM's form body. This kit therefore uses a persistent IBM Quantum SDK account. The API key remains on the agent's private disk and must be treated as an agent credential.
 
 | Value | Environment variable |
 |---|---|
@@ -95,6 +96,8 @@ Simulation is the default. When you request real hardware, the agent submits one
 ## Tools and local development
 
 ```sh
+uv sync --locked
+uv run --locked qiskit-lab --help
 bash scripts/dam/setup.sh
 scripts/dam/quantum onboarding
 scripts/dam/quantum doctor --online
@@ -114,9 +117,10 @@ scripts/dam/quantum compare --left LOCAL_RECEIPT.json --right artifacts/dam/job.
 Grover uses two qubits and marked state `11`; Deutsch–Jozsa uses a balanced oracle. The model can develop other circuits and export them to QASM. The local simulator supports up to 20 qubits. Joint counts preserve correlations between registers. Compare distributions for the same circuit and register order. Artifacts are saved in `artifacts/dam/<run>/`.
 
 ```sh
-uv sync --locked --project dam
-uv run --locked --project dam pytest dam/tests -q
-uv run --locked --project dam ruff check dam scripts/dam
+uv sync --locked
+uv run --locked pytest -q
+uv run --locked ruff check src tests scripts/dam
+uv build
 ```
 
 CI runs these checks on Linux: algorithms, QASM, joint correlations, QAOA, single-submission QPU contracts, job receipts, safe errors, and first-chat setup behavior. Mock tests do not establish a real IBM connection; use `doctor --online` for that.
@@ -131,6 +135,17 @@ dam run 'Qiskit Lab' -p 'In ~/work/qiskit-lab run bash scripts/dam/setup.sh and 
 
 On DAM 0.2.24, importing can replace the entire source directory. Download artifacts you want to retain with `dam file get` first. The SDK account is outside that directory. Do not delete the agent to update it: deletion also removes its account and data.
 
-If IBM access fails, check the API key, instance CRN, and rules for `iam.cloud.ibm.com`, `resource-controller.cloud.ibm.com`, `quantum.cloud.ibm.com`, and the regional endpoint (`us-east.quantum.cloud.ibm.com` or `eu-de.quantum.cloud.ibm.com`). For another region, add the IBM hostname to the agent's DAM networking rules.
+If IBM access fails, check the API key, instance CRN, and rules for `iam.cloud.ibm.com`, `resource-controller.cloud.ibm.com`, `api.global-search-tagging.cloud.ibm.com`, `globalcatalog.cloud.ibm.com`, `quantum.cloud.ibm.com`, and the regional endpoint (`us-east.quantum.cloud.ibm.com` or `eu-de.quantum.cloud.ibm.com`). For another region, add the IBM hostname to the agent's DAM networking rules.
 
-References: [official starter kits](https://github.com/dam-agents/dam-starter-kits), [kit architecture](https://github.com/dam-agents/dam/blob/main/docs/architecture/starter-kits.md).
+References: [official starter kits](https://github.com/dam-agents/dam-starter-kits) and [kit architecture](https://github.com/dam-agents/dam/blob/main/docs/architecture/starter-kits.md).
+
+## Python package and container
+
+You can also install the package with `python -m pip install .`; this installs the required SDK dependencies and exposes `qiskit-lab`. Run `qiskit-lab doctor` to inspect the installed SDK versions, or `python -m qiskit_lab --help`.
+
+```sh
+docker build -t qiskit-lab .
+docker run --rm qiskit-lab execute --example bell --shots 256
+```
+
+The container installs the locked SDK environment during its build and runs the CLI as a non-root user. It does not start an HTTP server.

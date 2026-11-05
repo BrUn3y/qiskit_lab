@@ -24,8 +24,7 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+ROOT = Path.cwd()
 logging.getLogger("qiskit_ibm_runtime").setLevel(logging.CRITICAL)
 
 
@@ -156,7 +155,7 @@ def execute(args):
         return receipt
     result = StatevectorSampler(seed=42).run([circuit], shots=args.shots).result()
     receipt.update(backend="local_statevector_simulator", status="DONE", counts=counts_from_result(result)[0])
-    from beeai_agents.execution_visualization import render_execution_dashboard
+    from qiskit_lab.execution_visualization import render_execution_dashboard
 
     image = render_execution_dashboard(circuit, receipt["counts"], backend_name=receipt["backend"],
                                        job_id=receipt["run_id"], shots=args.shots)
@@ -187,7 +186,7 @@ def inspect_job(args):
 
 
 def qaoa(args):
-    from beeai_agents.experiment_engine import run_maxcut_qaoa
+    from qiskit_lab.experiment_engine import run_maxcut_qaoa
 
     result = run_maxcut_qaoa(args.request, shots=args.shots)
     directory = artifact_dir(args.output_dir)
@@ -221,7 +220,7 @@ def doctor(args):
 
 def onboarding():
     """Describe the first-chat connection step without opening credential files."""
-    setup = "cd ~/work/qiskit-lab && uv run --locked --project dam python scripts/dam/configure-quantum.py"
+    setup = "cd ~/work/qiskit-lab && uv run --locked python scripts/dam/configure-quantum.py"
     request = {"status": "needs_credentials", "channel": "ibm_quantum_platform",
                 "message": "To connect Qiskit Lab to IBM Quantum, configure your API key and, if available, "
                            "your instance CRN. Do not paste the key into chat: open this agent's Terminal "
@@ -252,7 +251,7 @@ def onboarding():
 
 
 def inspect_backend(args):
-    from beeai_agents.backend_visualization import render_backend_dashboard
+    from qiskit_lab.backend_visualization import render_backend_dashboard
 
     backend = runtime_service().backend(args.name)
     response = backend_summary(backend)

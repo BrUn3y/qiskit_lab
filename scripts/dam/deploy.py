@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 HOSTS = ("pypi.org", "files.pythonhosted.org", "github.com", "release-assets.githubusercontent.com",
          "iam.cloud.ibm.com", "resource-controller.cloud.ibm.com", "quantum.cloud.ibm.com",
+         "api.global-search-tagging.cloud.ibm.com", "globalcatalog.cloud.ibm.com",
          "us-east.quantum.cloud.ibm.com", "eu-de.quantum.cloud.ibm.com")
 BOOTSTRAP = """Work in ~/work/qiskit-lab. Read AGENTS.md and ONBOARDING.md.
 Run scripts/dam/quantum onboarding. If the account is missing, your first reply
@@ -75,8 +76,8 @@ def copy_tracked(destination):
             target = destination / path
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
-    if not (destination / "dam/uv.lock").exists():
-        raise RuntimeError("Missing tracked DAM lockfile. Commit or stage the kit before deployment.")
+    if not (destination / "uv.lock").exists():
+        raise RuntimeError("Missing tracked Qiskit lockfile. Commit or stage the kit before deployment.")
 
 
 def configure_model(agent_id, requested_model=None):

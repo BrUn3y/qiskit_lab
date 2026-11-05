@@ -1,50 +1,48 @@
 # Qiskit Lab on DAM
 
-This checkout is the private DAM edition of BrUn3y/quantum_lab_agent.
 Use English for all code, comments, documentation and agent responses.
-Read `.agents/skills/qiskit-lab/SKILL.md` before doing quantum work.
-For initial setup follow `ONBOARDING.md`. `CLAUDE.md` points here too.
+This project is a native Python package built on the Qiskit SDK. Installation of
+`qiskit` and `qiskit-ibm-runtime` is mandatory: run `uv sync --locked` before use,
+or `bash scripts/dam/setup.sh` for installation plus a Bell smoke test.
+The command wrapper also ensures the locked environment is installed.
+Read `.agents/skills/qiskit-lab/SKILL.md` before quantum work. For first-time
+configuration, follow `ONBOARDING.md`. `CLAUDE.md` points here too.
 
 At the beginning of every new chat, run `scripts/dam/quantum onboarding` before
 answering the first user message. Perform startup checks silently; do not narrate
-file reads or internal protocols. Begin the visible reply with the greeting and
+file reads or internal protocols. Begin the visible reply with a greeting and
 the action the owner needs to take. If it reports `needs_credentials`, the first
-reply must ask the owner to configure their IBM Quantum API key, show the
-returned setup command for their own DAM Terminal, and offer local simulation
-as an alternative. State the API-key variable `QISKIT_IBM_TOKEN`, supported alias
-`QISKIT_IBM_RUNTIME_APIKEY`, and instance variable `QISKIT_IBM_INSTANCE`. Explain
-that hidden setup saves an SDK account instead, so variables are optional.
-Do not run algorithm demos before this first setup invitation.
-Never collect the key as chat text or in a chat form: even masked fields enter
-DAM's transcript. A `ready` response means reuse the existing verified account;
-do not ask for its API key again. A `connection_error` is a failed live check,
-not proof that the account is missing. Explain the failure without reading it.
+reply must ask the owner to configure the IBM Quantum API key, show the returned
+setup command for their own DAM Terminal, and offer local simulation.
+Name `QISKIT_IBM_TOKEN`, its supported alias `QISKIT_IBM_RUNTIME_APIKEY`, and the
+instance variable `QISKIT_IBM_INSTANCE`. Hidden setup saves an SDK account instead,
+so variables are optional. Do not run demos before this first setup invitation.
+Never collect the key as chat text or in a masked chat form: these enter the DAM
+transcript. Reuse a `ready` account without asking for its key again. Explain
+`connection_error` and `no_backends` without inspecting credentials.
 
-Use DAM's current model/harness for reasoning and circuit development. Use
-`scripts/dam/quantum` for execution and live IBM queries. No local Ollama,
-BeeAI, Agent Stack service or five A2A servers are needed for this native path.
-The original five agents remain in `src/beeai_agents` for the legacy deployment.
-Reuse the original `experiment_engine.py` for QAOA; do not invent results.
+Use DAM's model/harness for reasoning and circuit development. Use
+`scripts/dam/quantum` or `uv run --locked qiskit-lab` for execution and live queries.
+All quantum operations use Qiskit directly. The package is `src/qiskit_lab`;
+it includes circuit execution, backend inspection, job retrieval, deterministic
+QAOA Max-Cut, and PNG visualizations. Never invent results.
 
-The user authorizes hardware by requesting real hardware/IBM Quantum execution.
-Then submit once with `--hardware`, preserve and return the job ID, backend,
-shots and artifact paths. The default is local simulation. A named IBM backend
-also requires `--hardware`; never silently spend QPU time. Never retry a failed
-submission automatically: it might already have reached IBM. Query the IBM
-Quantum dashboard for jobs tagged `qiskit-lab-dam` before a user-requested retry.
-The execution-time option limits QPU execution per job, not cost or queue time.
+A request for real IBM Quantum hardware authorizes one submission. Use
+`--hardware`, preserve and return the job ID, backend, shots and artifact paths.
+Simulation is the default. A named backend also requires `--hardware`.
+Never retry hardware submission automatically: it may already have reached IBM.
+Inspect jobs tagged `qiskit-lab-dam` before a user-requested retry. The execution
+limit controls QPU execution time per job, not cost or queue time.
 
-Never read, print, copy, commit or upload `.env`, `.qiskit`, SDK account files,
-keys or credentials. Do not run the hidden credential setup through a model
-tool or ask for credentials in chat. The owner must run it in their own Terminal.
-Only the Python application/SDK consumes credentials at runtime. Do not enable
-SDK HTTP debug logging. Use `doctor --online` to verify access, without exposing
-credentials. Do not report a working IBM connection based only on an offline test.
+Never read, print, copy, commit or upload credentials, `.env`, `.qiskit`, SDK
+account files or keys. Never run the hidden credential prompt with model tools.
+The owner runs it directly in their Terminal. Only the application/IBM SDK uses
+credentials at runtime. Keep SDK HTTP debug logging disabled. Use
+`doctor --online` to verify live access; offline tests do not prove connectivity.
 
-Save outputs below `artifacts/dam/`. Return local artifact links supported by
-DAM, not Agent Stack canvas markers. Jobs may outlive an agent's session:
-inspect the existing ID with `quantum job`, without creating a replacement.
-Report backend-query timestamps and separate simulated from hardware results.
+Save outputs under `artifacts/dam/` and return supported DAM file links. Query
+existing job IDs after a timeout or new session instead of submitting replacements.
+Report live query timestamps and distinguish simulated from hardware results.
 
-Validation: `uv run --locked --project dam pytest dam/tests -q` and
-`uv run --locked --project dam ruff check dam scripts/dam`.
+Validation: `uv run --locked pytest -q`,
+`uv run --locked ruff check src tests scripts/dam`, and `uv build`.

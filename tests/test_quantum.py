@@ -7,7 +7,7 @@ from qiskit import QuantumCircuit, qasm3
 from qiskit.providers.fake_provider import GenericBackendV2
 from qiskit_ibm_runtime.options import SamplerOptions
 
-import quantum
+from qiskit_lab import cli as quantum
 
 
 @pytest.fixture
@@ -144,13 +144,12 @@ def test_qaoa_reuses_original_engine_offline(tmp_path, offline):
     assert not offline.called
 
 
-def test_engine_does_not_import_legacy_agent_framework():
+def test_qiskit_engine_imports_as_an_installed_package(tmp_path):
     import subprocess
     import sys
 
-    code = "import beeai_agents.experiment_engine; import sys; assert 'beeai_framework' not in sys.modules"
-    subprocess.run([sys.executable, "-c", code], env={**quantum.os.environ, "PYTHONPATH": str(quantum.ROOT / "src")},
-                   check=True, capture_output=True)
+    code = "from qiskit_lab.experiment_engine import parse_maxcut_graph; assert parse_maxcut_graph('5 nodes')[0] == 5"
+    subprocess.run([sys.executable, "-c", code], cwd=tmp_path, check=True, capture_output=True)
 
 
 def test_comparison_normalizes_different_shot_totals(tmp_path):

@@ -3,7 +3,9 @@ name: qiskit-lab
 description: Develop quantum circuits, simulate algorithms, inspect IBM Quantum backends, submit explicitly requested QPU jobs, retrieve results, and run QAOA Max-Cut experiments from DAM.
 ---
 
-Work from the repository root. Run `bash scripts/dam/setup.sh` once.
+Work from the repository root. The Qiskit SDK and IBM Runtime SDK are mandatory.
+Run `uv sync --locked` before use, or `bash scripts/dam/setup.sh` to install them
+and run a Bell smoke test. The package is `src/qiskit_lab`.
 Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
 
 ## Workflow
@@ -29,7 +31,7 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    joint bit counts. `--wait 60` waits briefly for an existing job, and
    `--output artifacts/dam/job.json` saves it. A timeout is not a new submission.
 6. **Experiment:** `scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'`.
-   This runs the original deterministic p=1 engine (2–8 nodes), optimizes locally,
+   This runs the Qiskit deterministic p=1 engine (2–8 nodes), optimizes locally,
    compares with the exact classical optimum and produces a PNG, JSON and QASM.
    For a requested hardware comparison, submit the returned `qasm_path` once
    with `--hardware`. Compare normalized counts and cut values after it finishes;
@@ -56,7 +58,7 @@ Never request an API key in chat. Show the user this command to run themselves
 in DAM's browser Terminal, from the project root:
 
 ```sh
-uv run --locked --project dam python scripts/dam/configure-quantum.py
+uv run --locked python scripts/dam/configure-quantum.py
 ```
 
 It prompts for the instance CRN and a hidden API key, verifies backend access,
