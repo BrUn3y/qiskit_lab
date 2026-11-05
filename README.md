@@ -159,9 +159,15 @@ Simulation is the default. When you request real hardware, the agent submits one
 
 ## Automatic Carbon HTML job reports
 
-Every completed simulation and QAOA experiment automatically produces
-`report.html` alongside its JSON, QASM and PNG artifacts. The chat returns a link
-to the HTML report. Reports use the official **IBM Carbon Design System** Gray 100
+Every completed simulation, QAOA experiment and terminal hardware job produces
+`<job-or-run-id>-<circuit-description>.html` alongside its JSON, QASM and PNG
+artifacts. For example, a Bell job produces `JOB_ID-bell-circuit.html`.
+The agent automatically displays the report as a rendered DAM HTML artifact and
+includes its artifact and workspace file links. If artifact publication is
+unavailable, it explains that limitation and preserves the downloadable report.
+Use `execute --title 'My circuit'` to label a custom circuit; the default
+description comes from the example or QASM filename. `job JOB_ID --title 'My circuit'`
+can label an existing job when its circuit is known. Reports use the official **IBM Carbon Design System** Gray 100
 theme and bundled IBM Plex fonts. They are self-contained and open offline.
 
 Reports include the recorded job/run ID, backend, status, requested and observed
@@ -181,7 +187,8 @@ No report step submits another hardware job. Failed/cancelled jobs receive a
 status report without fabricated counts. Report delivery appears in the DAM
 scheduled run; instant delivery into the original chat is not guaranteed.
 
-The schedule uses persistent notifications: after presenting each report link,
+The schedule uses persistent notifications: after publishing each report artifact
+and presenting its link,
 the agent acknowledges that ID. An interrupted delivery remains pending. Network
 or result-download errors keep the job eligible for the next poll. DAM must be
 running and its schedule enabled for automatic checks. Detection occurs at the

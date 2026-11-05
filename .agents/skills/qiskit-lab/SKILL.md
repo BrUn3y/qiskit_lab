@@ -28,7 +28,8 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    least-busy QPU with enough qubits. Transpile to its ISA and submit once
    using IBM Runtime SamplerV2. Return the accepted job ID immediately.
 5. **Inspect:** `scripts/dam/quantum job JOB_ID` retrieves status and, when done,
-   joint bit counts and a standalone `report.html` using official IBM Carbon styles. `--wait 60` waits briefly for an existing job, and
+   joint bit counts and a named Carbon HTML report. `--title 'Bell circuit'` can
+   label an existing job when its circuit description is known. `--wait 60` waits briefly for an existing job, and
    `--output artifacts/dam/job.json` saves it. A timeout is not a new submission.
 6. **Experiment:** `scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'`.
    This runs the Qiskit deterministic p=1 engine (2–8 nodes), optimizes locally,
@@ -77,8 +78,23 @@ persist or transfer it; guide the owner to replace it through the hidden prompt.
 
 ## Automatic completion reports
 
-Every successful `execute` and `qaoa` command creates `report.html` next to its
-JSON, QASM and PNG artifacts. Always link `report_path` in the response. The HTML
+Every successful `execute` and `qaoa` command creates
+`<job-or-run-id>-<circuit-description>.html` next to its JSON, QASM and PNG
+artifacts. Example: `JOB_ID-bell-circuit.html`. Use
+`execute --title 'Circuit description'` for a custom name; otherwise examples
+use their algorithm name and custom circuits use the QASM filename.
+
+Automatically publish `report_path` as a rendered HTML artifact in the same
+response, using DAM's `create_artifact` tool or `create_artifact_upload_url` and
+the returned upload instructions for large files. Set the filename to
+`report_filename` and content type to `text/html`. Do this for successful
+simulations, QAOA, terminal `job` results and scheduled notifications without
+waiting for the owner to ask. Include the returned artifact link and a supported
+workspace file link. If publication fails or no artifact tool is available,
+disclose that limitation and preserve the report; never claim it was displayed.
+Do not acknowledge a scheduled report until its artifact and link were delivered.
+
+The HTML
 includes embedded Carbon styles and IBM Plex fonts, metadata, available timing
 and QPU usage, interactive probability/count charts, searchable measurement
 tables, downloads, source circuit, and QAOA optimization details when applicable.

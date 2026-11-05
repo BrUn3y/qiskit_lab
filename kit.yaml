@@ -49,8 +49,13 @@ schedules:
       This is scheduled completion reporting, not first-time onboarding.
       Read ~/AGENTS.md and the Qiskit Lab project instructions it references.
       Run bash ~/.local/bin/qiskit-lab-dam poll-jobs.
-      For each pending notification, present the existing Carbon HTML report
-      as a supported DAM workspace file link, with job ID, backend and final state.
+      For each pending notification, automatically publish the existing Carbon
+      HTML report as a rendered DAM artifact using create_artifact, or
+      create_artifact_upload_url and its returned upload instructions for large files.
+      Use report_filename and content type text/html. Present the artifact link
+      and a supported workspace file link, with job ID, backend and final state.
+      Never wait for a visualization request. If publication fails, disclose it,
+      preserve the report and leave that notification unacknowledged.
       Only after presenting the link, run bash ~/.local/bin/qiskit-lab-dam poll-jobs
       --ack JOB_ID for that delivered job. Never acknowledge an undelivered report.
       Explain safe error classes and preserve tracking when a query fails.

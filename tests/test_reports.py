@@ -16,6 +16,8 @@ def test_self_contained_report_escapes_untrusted_job_data(tmp_path):
     data = {"status": "DONE", "hardware": True, "job_id": malicious, "backend": malicious,
             "counts": [{"00": 12, "11": 4}, {"01": 16}], "title": malicious}
     path = write_report(data, tmp_path)
+    assert path.parent == tmp_path
+    assert '/' not in path.name and '\\' not in path.name
     html = path.read_text()
     assert malicious not in html
     assert '&lt;script&gt;' in html
@@ -33,7 +35,7 @@ def test_self_contained_report_escapes_untrusted_job_data(tmp_path):
 def test_reports_require_a_terminal_status(tmp_path):
     with pytest.raises(ValueError, match='terminal'):
         write_report({"status": "RUNNING"}, tmp_path)
-    assert not (tmp_path / 'report.html').exists()
+    assert not list(tmp_path.glob('*.html'))
 
 
 def fake_job(monkeypatch, status="DONE"):
@@ -52,6 +54,7 @@ def fake_job(monkeypatch, status="DONE"):
 def tracked_receipt(tmp_path):
     directory = tmp_path / 'accepted-run'
     cli.save_json(directory / 'receipt.json', {"hardware": True, "job_id": "tracked-job", "status": "SUBMITTED",
+                                             "title": "Bell circuit",
                                              "shots": 64, "qubits": 2, "backend": "ibm_test", "artifacts": str(directory)})
     (directory / 'circuit.qasm').write_text('OPENQASM 3.0; qubit[2] q;')
     return directory
@@ -62,7 +65,9 @@ def test_completed_hardware_retains_receipt_and_renders_report(monkeypatch, tmp_
     directory = tracked_receipt(tmp_path)
     args = cli.parser().parse_args(['job', 'tracked-job', '--output-dir', str(tmp_path)])
     result = cli.inspect_job(args)
-    assert Path(result['report_path']) == directory / 'report.html'
+    assert Path(result['report_path']) == directory / 'tracked-job-bell-circuit.html'
+    assert result['report_filename'] == 'tracked-job-bell-circuit.html'
+    assert result['report_title'] == 'Bell circuit'
     assert result['shots'] == 64
     assert result['qubits'] == 2
     assert result['completed_at'] == '2026-11-04T00:01:00Z'
@@ -91,11 +96,13 @@ def test_poller_retries_result_download_and_acknowledges_delivery(monkeypatch, t
     job.result.side_effect = TimeoutError('sensitive SDK text')
     first = poll_jobs(args)
     assert first['notifications'] == []
-    assert not (directory / 'report.html').exists()
+    assert not list(directory.glob('*.html'))
     job.result.side_effect = None
     second = poll_jobs(args)
     assert second['notifications'][0]['job_id'] == 'tracked-job'
-    assert (directory / 'report.html').exists()
+    assert (directory / 'tracked-job-bell-circuit.html').exists()
+    assert second['notifications'][0]['report_filename'] == 'tracked-job-bell-circuit.html'
+    assert second['notifications'][0]['report_title'] == 'Bell circuit'
     poll_jobs(args)  # Repeated ticks retain one notification until acknowledged.
     assert len(poll_jobs(args)['notifications']) == 1
     calls = job.result.call_count
@@ -104,7 +111,7 @@ def test_poller_retries_result_download_and_acknowledges_delivery(monkeypatch, t
     args.ack = []
     assert poll_jobs(args)['notifications'] == []
     assert job.result.call_count == calls
-    assert 'sensitive SDK text' not in (directory / 'report.html').read_text()
+    assert 'sensitive SDK text' not in (directory / 'tracked-job-bell-circuit.html').read_text()
 
 
 def test_notification_survives_report_written_before_poller_restart(monkeypatch, tmp_path):
@@ -113,6 +120,62 @@ def test_notification_survives_report_written_before_poller_restart(monkeypatch,
     cli.inspect_job(cli.parser().parse_args(['job', 'tracked-job', '--output-dir', str(tmp_path)]))
     result = poll_jobs(cli.parser().parse_args(['poll-jobs', '--output-dir', str(tmp_path)]))
     assert len(result['notifications']) == 1
+
+
+def test_legacy_report_migrates_offline_and_preserves_acknowledgement(monkeypatch, tmp_path):
+    directory = tracked_receipt(tmp_path)
+    receipt = json.loads((directory / 'receipt.json').read_text())
+    receipt.update(status='DONE', counts=[{'00': 30, '11': 34}], report_path=str(directory / 'report.html'))
+    cli.save_json(directory / 'receipt.json', receipt)
+    (directory / 'report.html').write_text('Previously delivered report')
+    cli.save_json(tmp_path / 'job-notifications.json', [{
+        'event_id': 'tracked-job:DONE', 'job_id': 'tracked-job', 'status': 'DONE',
+        'report_path': receipt['report_path'], 'acknowledged_at': '2026-11-04T00:02:00Z',
+    }])
+    service = Mock(side_effect=AssertionError('Cached report migration must not contact IBM'))
+    monkeypatch.setattr(cli, 'runtime_service', service)
+    result = poll_jobs(cli.parser().parse_args(['poll-jobs', '--output-dir', str(tmp_path)]))
+    assert result['notifications'] == []
+    updated = json.loads((directory / 'receipt.json').read_text())
+    assert updated['counts'] == receipt['counts']
+    assert Path(updated['report_path']).name == 'tracked-job-bell-circuit.html'
+    assert Path(updated['report_path']).is_file()
+    assert (directory / 'report.html').read_text() == 'Previously delivered report'
+    entry = json.loads((tmp_path / 'job-notifications.json').read_text())[0]
+    assert entry['report_path'] == updated['report_path']
+    assert entry['acknowledged_at'] == '2026-11-04T00:02:00Z'
+    service.assert_not_called()
+
+
+def test_missing_named_report_is_retried_even_when_a_legacy_file_exists(monkeypatch, tmp_path):
+    job = fake_job(monkeypatch)
+    directory = tracked_receipt(tmp_path)
+    receipt = json.loads((directory / 'receipt.json').read_text())
+    receipt.update(status='DONE', report_path=str(directory / 'tracked-job-bell-circuit.html'))
+    cli.save_json(directory / 'receipt.json', receipt)
+    (directory / 'report.html').write_text('Legacy report')
+    result = poll_jobs(cli.parser().parse_args(['poll-jobs', '--output-dir', str(tmp_path)]))
+    assert Path(result['notifications'][0]['report_path']).is_file()
+    job.result.assert_called_once()
+
+
+@pytest.mark.parametrize('identifier,title', [
+    ('../../outside', '../Bell / circuit'), ('job-1', 'é' * 300), ('<>', '!!!'),
+])
+def test_report_filename_is_bounded_and_stays_in_its_run_directory(tmp_path, identifier, title):
+    path = write_report({'status': 'DONE', 'hardware': True, 'job_id': identifier, 'title': title}, tmp_path)
+    assert path.parent == tmp_path
+    assert len(path.name) < 180
+    assert not path.name.startswith('.')
+    assert all(char.isascii() and (char.isalnum() or char in '-.') for char in path.name)
+
+
+def test_existing_job_accepts_an_explicit_circuit_description(monkeypatch, tmp_path):
+    fake_job(monkeypatch)
+    result = cli.inspect_job(cli.parser().parse_args([
+        'job', 'tracked-job', '--title', 'Grover search circuit', '--output-dir', str(tmp_path)]))
+    assert result['report_filename'] == 'tracked-job-grover-search-circuit.html'
+    assert result['title'] == 'Grover search circuit'
 
 
 def test_precheck_skips_model_when_no_job_completes(monkeypatch, tmp_path, capsys):

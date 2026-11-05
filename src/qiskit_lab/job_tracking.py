@@ -66,7 +66,8 @@ def job_metadata(job):
 
 
 def poll_jobs(args):
-    from qiskit_lab.cli import inspect_job, now, save_json
+    from qiskit_lab.cli import finish_report, inspect_job, now, save_json
+    from qiskit_lab.reports import report_filename
 
     base = Path(args.output_dir)
     base.mkdir(parents=True, exist_ok=True)
@@ -95,7 +96,8 @@ def poll_jobs(args):
         tracked.sort(key=lambda pair: pair[1].get("queried_at", pair[1].get("created_at", "")))
         checked = 0
         for path, receipt in tracked:
-            has_report = (receipt.get("report_path") and (path.parent / "report.html").exists()
+            report = path.parent / Path(str(receipt.get("report_path", ""))).name
+            has_report = (receipt.get("report_path") and report.is_file() and not report.is_symlink()
                           and not receipt.get("report_error"))
             completed = receipt.get("status") in TERMINAL and has_report
             if not completed and checked >= 10:
@@ -103,15 +105,23 @@ def poll_jobs(args):
             try:
                 if completed:
                     response = receipt
+                    if report.name != report_filename(receipt, path.parent):
+                        # Migrate cached results offline; never query or resubmit a completed job for a filename.
+                        response = finish_report(receipt, path.parent, "receipt.json")
                 else:
                     checked += 1
                     response = inspect_job(SimpleNamespace(job_id=receipt["job_id"], wait=0, output=None, output_dir=base))
                 if response.get("status") in TERMINAL and response.get("report_path") and not response.get("report_error"):
                     event_id = response["job_id"] + ":" + response["status"]
-                    if not any(entry["event_id"] == event_id for entry in queue):
-                        queue.append({"event_id": event_id, "job_id": response["job_id"], "status": response["status"],
-                                      "backend": response["backend"], "report_path": response["report_path"],
-                                      "created_at": now()})
+                    details = {"job_id": response["job_id"], "status": response["status"],
+                               "backend": response["backend"], "report_path": response["report_path"],
+                               "report_filename": Path(response["report_path"]).name,
+                               "report_title": response.get("report_title", response.get("title", "IBM Quantum execution"))}
+                    entry = next((entry for entry in queue if entry["event_id"] == event_id), None)
+                    if entry is None:
+                        queue.append({"event_id": event_id, **details, "created_at": now()})
+                    else:
+                        entry.update(details)
             except Exception as error:  # noqa: BLE001 - Preserve the job for another read-only query
                 errors.append({"job_id": receipt["job_id"], "error": type(error).__name__})
                 # Rotate failed queries too: stale/unavailable IDs must not

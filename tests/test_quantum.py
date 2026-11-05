@@ -30,6 +30,7 @@ def test_algorithms_execute_offline(example, expected, tmp_path, offline):
     assert "job_id" not in result
     assert (Path(result["artifacts"]) / "receipt.json").exists()
     assert Path(result["report_path"]).exists()
+    assert result['report_filename'] == f"{result['run_id']}-{example}-circuit.html"
     assert not offline.called
 
 
@@ -42,6 +43,20 @@ def test_qasm_loading_and_measurements(version, tmp_path, offline):
     path.write_text(text)
     args = quantum.parser().parse_args(["execute", "--qasm", str(path), "--output-dir", str(tmp_path)])
     assert quantum.execute(args)["counts"] == {"01": 1024}
+
+
+@pytest.mark.parametrize('title', [None, 'Named custom experiment'])
+def test_custom_circuit_report_uses_its_filename_or_explicit_title(title, tmp_path, offline):
+    path = tmp_path / 'custom-search.qasm'
+    path.write_text('OPENQASM 2.0; include "qelib1.inc"; qreg q[1]; x q[0];')
+    command = ['execute', '--qasm', str(path), '--output-dir', str(tmp_path)]
+    if title:
+        command += ['--title', title]
+    result = quantum.execute(quantum.parser().parse_args(command))
+    assert result['title'] == (title or 'custom search circuit')
+    assert result['report_filename'].endswith(
+        '-named-custom-experiment.html' if title else '-custom-search-circuit.html')
+    offline.assert_not_called()
 
 
 def test_multiple_measurement_registers_preserve_correlations(tmp_path, offline):

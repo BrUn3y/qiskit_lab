@@ -35,7 +35,8 @@ Read `AGENTS.md` and `.agents/skills/qiskit-lab/SKILL.md` in the existing checko
    and explain the safe error; never inspect credential files or bypass egress.
 5. If the owner explicitly chooses local simulation, honor that choice without
    requiring an IBM account. Run requested simulations only after that choice,
-   return each Carbon `report_path`, and identify the local simulator. Real
+   automatically display each Carbon `report_path` as a DAM HTML artifact using
+   its descriptive `report_filename`, include its link, and identify the local simulator. Real
    hardware always requires a separate explicit request authorizing one job.
 
 When the platform exposes onboarding tools, use `set_onboarding_checklist` only

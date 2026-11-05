@@ -39,8 +39,13 @@ REPORT_SCHEDULE_NAME = "Qiskit Lab job reports"
 REPORT_PRECHECK = "cd ~/work/qiskit-lab && bash scripts/dam/quantum poll-jobs --precheck"
 REPORT_TASK = """Work in ~/work/qiskit-lab. This is scheduled completion reporting, not onboarding.
 Read AGENTS.md and the project skill. Run bash scripts/dam/quantum poll-jobs.
-For each pending notification, present the existing Carbon HTML report using a
-supported DAM workspace file link, along with the job ID, backend and final state.
+For each pending notification, automatically publish the existing Carbon HTML
+report as a rendered DAM artifact using create_artifact, or
+create_artifact_upload_url and its returned upload instructions for large files.
+Use report_filename and content type text/html. Present the artifact link and a
+supported workspace file link with the job ID, backend and final state.
+Never wait for the owner to request a visualization. If publishing fails, disclose
+it, preserve the file and leave that notification unacknowledged.
 After presenting each link, acknowledge only that ID with
 bash scripts/dam/quantum poll-jobs --ack JOB_ID. Never acknowledge an undelivered
 report. If there are only errors, explain the safe error class and keep tracking.
@@ -67,7 +72,13 @@ Do not run algorithm demos before that invitation. If ready, reuse the verified
 account without asking again. Explain a connection_error without reading secrets.
 Never submit a hardware job during onboarding. Always respond in English.
 Every completed simulation, experiment and hardware job must have a Carbon HTML
-report. Return report_path as a supported DAM file link. Pending hardware jobs
+report named with its job/run ID and circuit description. Automatically display
+report_path as a rendered DAM artifact in the same response using create_artifact,
+or create_artifact_upload_url and its returned upload instructions for large files.
+Use report_filename and content type text/html, and present the artifact link and
+a supported workspace file link. Never wait for a visualization request. If
+publication fails or its tools are unavailable, disclose that, preserve the report
+and keep any scheduled notification unacknowledged. Pending hardware jobs
 are checked by the Qiskit Lab job reports schedule; never resubmit them.
 Scheduled completion reporting skips first-chat onboarding and follows its task.
 {HOME_END}"""

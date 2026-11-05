@@ -162,8 +162,10 @@ def execute(args):
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
     receipt = {"run_id": directory.name, "created_at": now(), "shots": args.shots,
                "qubits": circuit.num_qubits, "hardware": args.hardware, "artifacts": str(directory)}
-    receipt.update(circuit_info(circuit), versions=sdk_versions(),
-                   title=(args.example.replace("-", " ").title() + " circuit") if args.example else "Custom quantum circuit")
+    title = getattr(args, "title", None) or (
+        args.example.replace("-", " ").title() + " circuit" if args.example
+        else args.qasm.stem.replace("_", " ").replace("-", " ") + " circuit")
+    receipt.update(circuit_info(circuit), versions=sdk_versions(), title=title)
     if args.hardware:
         service = runtime_service()
         backend = (service.backend(args.backend) if args.backend else
@@ -206,6 +208,8 @@ def inspect_job(args):
     base = getattr(args, "output_dir", ROOT / "artifacts/dam")
     directory, response = find_receipt(base, args.job_id)
     directory = directory or job_directory(base, args.job_id)
+    if getattr(args, "title", None):
+        response["title"] = args.title
     job = runtime_service().job(args.job_id)
     backend = job.backend()
     response.update(job_id=job.job_id(), backend=backend.name, status=str(job.status()), queried_at=now(),
@@ -379,10 +383,12 @@ def parser():
     run.add_argument("--shots", type=bounded_integer(1, 100000), default=1024)
     run.add_argument("--hardware", action="store_true")
     run.add_argument("--backend")
+    run.add_argument("--title", help="Circuit description for the HTML report title and filename")
     run.add_argument("--max-execution-time", type=bounded_integer(1, 10800), default=300)
     run.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
     status = commands.add_parser("job", help="Query an existing job without resubmitting")
     status.add_argument("job_id")
+    status.add_argument("--title", help="Known circuit description for this existing job's HTML report")
     status.add_argument("--wait", type=bounded_integer(0, 300), default=0)
     status.add_argument("--output", type=Path)
     status.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")

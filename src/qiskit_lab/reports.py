@@ -9,6 +9,8 @@ import base64
 import hashlib
 import json
 import math
+import re
+import unicodedata
 import uuid
 from datetime import UTC, datetime
 from html import escape
@@ -118,14 +120,26 @@ def _optimization(data):
                     ('best_bitstring', 'Best solution'), ('best_cut', 'Best cut')])}</section>'''
 
 
+def report_filename(data, directory):
+    """Identify a report by its recorded job/run and circuit, without unsafe paths."""
+    def slug(value, fallback, limit=80):
+        text = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode()
+        return re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-")[:limit].rstrip("-") or fallback
+
+    identifier = data.get("job_id") or data.get("run_id") or Path(directory).name
+    title = data.get("title") or ("IBM Quantum execution" if data.get("hardware") else "Local quantum experiment")
+    return f"{slug(identifier, 'run')}-{slug(str(title).lower(), 'quantum-circuit')}.html"
+
+
 def write_report(data, directory):
     """Write a standalone report atomically; only terminal runs receive reports."""
     if data.get("status") not in {"DONE", "ERROR", "CANCELLED"}:
         raise ValueError("A completion report requires a terminal job state.")
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / "report.html"
-    data["report_path"] = str(path)
+    path = directory / report_filename(data, directory)
+    title = str(data.get("title") or ("IBM Quantum execution" if data.get("hardware") else "Local quantum experiment"))
+    data.update(report_path=str(path), report_filename=path.name, report_title=title)
     raw = data.get("counts", [])
     counts = [raw] if isinstance(raw, dict) else raw
     measured = sum(sum(publication.values()) for publication in counts)
@@ -133,9 +147,8 @@ def write_report(data, directory):
     job_id = str(data.get("job_id") or data.get("run_id") or directory.name)
     hardware = data.get("hardware", False)
     status = data["status"]
-    title = str(data.get("title") or ("IBM Quantum execution" if hardware else "Local quantum experiment"))
     generated = datetime.now(UTC).isoformat()
-    downloads = _download("Download result JSON", "job-results.json", _json(data))
+    downloads = _download("Download result JSON", f"{path.stem}-results.json", _json(data))
     circuit = ""
     for filename in ("circuit.qasm", "isa-circuit.qasm", "optimized.qasm"):
         source = directory / filename

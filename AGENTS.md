@@ -43,9 +43,15 @@ credentials at runtime. Keep SDK HTTP debug logging disabled. Use
 `doctor --online` to verify live access; offline tests do not prove connectivity.
 
 Every completed simulation, QAOA experiment, and terminal IBM job must produce
-`report.html` using the bundled official IBM Carbon Design System styles. The
-CLI returns `report_path`; always give the owner a supported DAM workspace file
-link to that report. Keep code, reports and responses in English. If `report_error`
+`<job-or-run-id>-<circuit-description>.html` using the bundled official IBM Carbon
+Design System styles. The CLI returns `report_path`, `report_filename` and
+`report_title`. Automatically display the HTML in the same response as a DAM
+artifact: use `create_artifact`, or `create_artifact_upload_url` and its returned
+upload instructions for large files. Use `report_filename` and content type
+`text/html`. Never wait for the owner to request a visualization. Also give a
+supported workspace file link. If artifact publication fails or its tools are
+unavailable, disclose that and keep the file link; never claim it was displayed.
+Keep code, reports and responses in English. If `report_error`
 is returned, disclose it and preserve the results; do not claim a report exists.
 Queued/running jobs do not have final reports. Do not wait indefinitely in chat.
 The native kit declares a two-minute `Qiskit Lab job reports` schedule; the
@@ -55,7 +61,8 @@ registers `~/.local/bin/qiskit-lab-dam` for the actual checkout path. Its preche
 runs `poll-jobs --precheck`: this queries already accepted IDs, writes reports at
 DONE/ERROR/CANCELLED, and wakes the model only for unacknowledged notifications.
 It never submits QPU work. Run `scripts/dam/quantum poll-jobs` to retrieve pending
-notifications. Present each report link before `poll-jobs --ack JOB_ID`; never
+notifications. Publish each HTML artifact and present its link before
+`poll-jobs --ack JOB_ID`; never
 acknowledge undelivered reports. After manually delivering a hardware report,
 also acknowledge that job ID to avoid a later duplicate notification. Scheduled
 reporting is maintenance, not a first-time onboarding conversation.
