@@ -5,7 +5,9 @@ Read `.agents/skills/qiskit-lab/SKILL.md` before doing quantum work.
 For initial setup follow `ONBOARDING.md`. `CLAUDE.md` points here too.
 
 At the beginning of every new chat, run `scripts/dam/quantum onboarding` before
-answering the first user message. If it reports `needs_credentials`, the first
+answering the first user message. Perform startup checks silently; do not narrate
+file reads or internal protocols. Begin the visible reply with the greeting and
+the action the owner needs to take. If it reports `needs_credentials`, the first
 reply must ask the owner to configure their IBM Quantum API key, show the
 returned setup command for their own DAM Terminal, and offer local simulation
 as an alternative. State the API-key variable `QISKIT_IBM_TOKEN`, supported alias
