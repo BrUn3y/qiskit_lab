@@ -110,6 +110,7 @@ node_modules/
 # Temporary visualizations
 temp_visualizations/
 *.png
+!docs/images/*.png
 *.jpg
 *.jpeg
 

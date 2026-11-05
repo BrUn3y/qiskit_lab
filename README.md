@@ -25,6 +25,23 @@ flowchart LR
 
 Both **`qiskit` and `qiskit-ibm-runtime` are required dependencies** and must be installed before using the tools. QAOA remains experimental; this kit does not implement a general VQE optimizer. Code, documentation and agent responses use English.
 
+## Qiskit Lab in DAM
+
+These screenshots show a five-node QAOA Max-Cut local simulation and its Carbon
+HTML report inside DAM.
+
+**Report overview.** Completion status, downloads, shot count and circuit statistics.
+
+![Qiskit Lab in DAM showing the Carbon QAOA report overview](docs/images/dam-qaoa-report-overview.png)
+
+**Measurement results.** Observed bitstring probabilities and searchable results.
+
+![Carbon report showing the QAOA measurement distribution in DAM](docs/images/dam-qaoa-measurement-results.png)
+
+**Circuit and scientific dashboard.** Circuit source, graph, convergence and sampled solutions.
+
+![QAOA circuit and scientific dashboard displayed inside DAM](docs/images/dam-qaoa-circuit-dashboard.png)
+
 ## Install from the private repository
 
 Requirements: Python 3.11–3.13 and [uv](https://docs.astral.sh/uv/). Deployment from your machine additionally requires Git, Node.js 20+ and **DAM CLI 0.2.24**. The root `pyproject.toml` declares the required Qiskit SDK packages; `uv.lock` pins the complete environment.
