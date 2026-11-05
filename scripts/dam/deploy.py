@@ -11,6 +11,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -73,6 +74,19 @@ def configure_model(agent_id, requested_model=None):
     return models[0]
 
 
+def import_when_ready(agent_id, package):
+    # Egress changes roll DAM's gateway. Re-importing identical code is safe;
+    # this retry is unrelated to, and never used for, IBM hardware submissions.
+    for attempt in range(3):
+        try:
+            return run(["dam", "import", agent_id, str(package), "--yes", "--json"], as_json=True)
+        except RuntimeError as error:
+            if "instance unreachable" not in str(error) or attempt == 2:
+                raise
+            print("DAM gateway is restarting; retrying the code import in 5 seconds.", flush=True)
+            time.sleep(5)
+
+
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--name", default="Qiskit Lab")
@@ -119,7 +133,7 @@ def main():
             if host not in existing_hosts:
                 print(f"Allow network: {host}", flush=True)
                 run(["dam", "network", "create", agent_id, "--host", host, "--yes", "--json"], as_json=True)
-        imported = run(["dam", "import", agent_id, str(package), "--yes", "--json"], as_json=True)
+        imported = import_when_ready(agent_id, package)
         print("Tracked project imported into ~/work/qiskit-lab.", flush=True)
         deployment["import"] = imported
         state_path.write_text(json.dumps(deployment, indent=2) + "\n")
