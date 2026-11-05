@@ -60,12 +60,15 @@ IBM access using the owner-only hidden Terminal prompt. The platform holds
 recurring schedules until onboarding completes; schedules the owner skips or
 disables stay that way. No Node.js or local DAM CLI is needed for native install.
 
-For a **public** GitHub repository, use DAM's **Add by link** with
-`https://github.com/BrUn3y/qiskit_lab`, or open
-[the linked-kit installation page](https://dam.res.ibm.com/starter-kits/link/BrUn3y/qiskit_lab).
-For curated discovery, propose the repository entry in the root
-[`catalog.yaml`](catalog.yaml) to `dam-agents/dam-starter-kits/catalog.yaml`.
-The same file can serve as a standalone catalog:
+Native installation requires a catalog configured on the DAM deployment.
+Curated-catalog registration is proposed in
+[dam-starter-kits PR #18](https://github.com/dam-agents/dam-starter-kits/pull/18).
+After registration and catalog refresh, select **Qiskit Lab** from DAM's
+**Starter Kits** page. The current `dam.res.ibm.com` deployment supports
+catalog-listed kits; use the CLI deployment below while registration is pending.
+
+An operator can instead configure this repository's root
+[`catalog.yaml`](catalog.yaml) as a standalone catalog:
 
 ```yaml
 starterKits:
@@ -74,17 +77,16 @@ starterKits:
       url: https://github.com/BrUn3y/qiskit_lab
 ```
 
-That catalog addresses the kit as `quantum/qiskit-lab`. Public GitHub catalog and
-linked-kit reads are anonymous: this repository must be public before either
-can resolve it. Adapting the kit does not change repository visibility, publish
-it in the curated catalog, or convert an existing plain agent into a kit-created
-agent. While the repository is private, use the CLI fallback below.
+That catalog addresses the kit as `quantum/qiskit-lab`. Public GitHub catalog
+reads are anonymous, so the repository must be public. Preparing the manifests
+and registering the catalog are separate steps. Existing regular agents retain
+their deployment type.
 
 Validate both manifests offline with `uv run --locked pytest -q tests/test_kit.py`.
 The generated upstream schemas and their source commit are documented in
 [`dam/README.md`](dam/README.md).
 
-## Private repository CLI fallback
+## CLI deployment fallback
 
 Requirements: Python 3.11–3.13 and [uv](https://docs.astral.sh/uv/). Deployment from your machine additionally requires Git, Node.js 20+ and **DAM CLI 0.2.24**. The root `pyproject.toml` declares the required Qiskit SDK packages; `uv.lock` pins the complete environment.
 
@@ -97,7 +99,7 @@ uv sync --locked  # Required: installs Qiskit, IBM Runtime and the qiskit-lab co
 python3 scripts/dam/deploy.py --name 'Qiskit Lab'
 ```
 
-The installer uses your preferred DAM model provider, creates the agent, configures networking, imports **only Git-tracked files** into `~/work/qiskit-lab`, and starts onboarding. The tool wrapper installs the locked Qiskit environment in DAM before its first command. If the provider offers one model, it selects it automatically; otherwise pass `--model`. It excludes `.git`, credentials, local environments and results. The agent receives the private source without needing a GitHub connection.
+The installer uses your preferred DAM model provider, creates the agent, configures networking, imports **only Git-tracked files** into `~/work/qiskit-lab`, and starts onboarding. The tool wrapper installs the locked Qiskit environment in DAM before its first command. If the provider offers one model, it selects it automatically; otherwise pass `--model`. It excludes `.git`, credentials, local environments and results. The agent receives the tracked source without needing a GitHub connection.
 
 Options: `--provider 'Provider name'`, `--model ALIAS/MODEL_ID`, `--instance CRN` (not a secret), `--dry-run`, and `--no-run`. The agent and session IDs are saved in `.dam-deploy/deployment.json`, which Git ignores. If deployment fails after creating the agent, use `--existing` to resume deliberately. Use `--existing --agent AGENT_ID` to target an exact agent, including when names are duplicated.
 
@@ -109,7 +111,7 @@ dam agent update 'Qiskit Lab' --model ALIAS/MODEL_ID
 
 The CLI fallback creates a regular agent without a starter-kit badge or the
 platform's kit onboarding gate. A private repository on `github.com` cannot be
-resolved by the anonymous linked-kit or catalog readers. A platform-managed
+resolved by anonymous catalog readers. A platform-managed
 GitHub Enterprise catalog is a separate operator-configured capability.
 
 ## Connect IBM Quantum Platform
