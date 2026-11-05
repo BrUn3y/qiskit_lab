@@ -22,6 +22,7 @@ from qiskit import QuantumCircuit, qasm2, qasm3
 from qiskit.primitives import StatevectorSampler
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
+from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -221,10 +222,7 @@ def doctor(args):
 def onboarding():
     """Describe the first-chat connection step without opening credential files."""
     setup = "cd ~/work/qiskit-lab && uv run --locked --project dam python scripts/dam/configure-quantum.py"
-    available = bool(os.environ.get("QISKIT_IBM_TOKEN") or os.environ.get("QISKIT_IBM_RUNTIME_APIKEY"))
-    available = available or (Path.home() / ".qiskit/qiskit-ibm.json").exists()
-    if not available:
-        return {"status": "needs_credentials", "channel": "ibm_quantum_platform",
+    request = {"status": "needs_credentials", "channel": "ibm_quantum_platform",
                 "message": "Para conectar Qiskit Lab a IBM Quantum necesito que configures tu API key "
                            "y, si lo tienes, el CRN de tu instancia. No pegues la clave en el chat: "
                            "abre la Terminal de este agente y ejecuta el comando de configuración. "
@@ -234,8 +232,16 @@ def onboarding():
                 "setup_command": setup, "credential_entry": "hidden_terminal_prompt", "hardware_ready": False,
                 "api_key_env": "QISKIT_IBM_TOKEN", "api_key_env_alias": "QISKIT_IBM_RUNTIME_APIKEY",
                 "instance_env": "QISKIT_IBM_INSTANCE"}
+    available = bool(os.environ.get("QISKIT_IBM_TOKEN") or os.environ.get("QISKIT_IBM_RUNTIME_APIKEY"))
+    available = available or (Path.home() / ".qiskit/qiskit-ibm.json").exists()
+    if not available:
+        return request
     try:
         backends = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
+    except AccountNotFoundError:
+        # IBM's SDK can create an empty account file before an account is saved.
+        # File existence alone must not imply that the owner configured a key.
+        return request
     except Exception as error:  # noqa: BLE001 - Return safe SDK error classes without request bodies
         return {"status": "connection_error", "channel": "ibm_quantum_platform",
                 "error": type(error).__name__, "hardware_ready": False,

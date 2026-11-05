@@ -212,3 +212,16 @@ def test_first_chat_distinguishes_connection_error_from_missing_account(monkeypa
     assert response["status"] == "connection_error"
     assert response["error"] == "ConnectionError"
     assert "private-request-body" not in str(response)
+
+
+def test_first_chat_requests_key_when_sdk_created_an_empty_account_file(monkeypatch, tmp_path):
+    monkeypatch.delenv("QISKIT_IBM_TOKEN", raising=False)
+    monkeypatch.delenv("QISKIT_IBM_RUNTIME_APIKEY", raising=False)
+    monkeypatch.setattr(quantum.Path, "home", lambda: tmp_path)
+    account = tmp_path / ".qiskit/qiskit-ibm.json"
+    account.parent.mkdir()
+    account.write_text("{}")
+    monkeypatch.setattr(quantum, "runtime_service", Mock(side_effect=quantum.AccountNotFoundError("no account")))
+    response = quantum.onboarding()
+    assert response["status"] == "needs_credentials"
+    assert response["api_key_env"] == "QISKIT_IBM_TOKEN"
