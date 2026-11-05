@@ -15,7 +15,7 @@ def test_kit_matches_official_schema_and_bootstrap_files_exist():
     jsonschema.Draft202012Validator(schema).validate(kit)
     assert kit["seed"] == {"self": True, "into": "work"}
     assert (ROOT / "ONBOARDING.md").exists()
-    assert (ROOT / kit["bundledSkills"]["path"] / "quantum-lab/SKILL.md").exists()
+    assert (ROOT / kit["bundledSkills"]["path"] / "qiskit-lab/SKILL.md").exists()
     assert not kit.get("schedules")
     assert not kit.get("env")
 

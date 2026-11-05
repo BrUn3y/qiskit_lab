@@ -1,7 +1,7 @@
 [project]
-name = "quantum-lab-dam"
+name = "qiskit-lab-dam"
 version = "0.1.0"
-description = "Native DAM tools for Quantum Lab and IBM Quantum Platform"
+description = "Native DAM tools for Qiskit Lab and IBM Quantum Platform"
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "qiskit>=2.2,<3",

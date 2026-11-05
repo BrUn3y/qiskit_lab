@@ -1,6 +1,6 @@
-# Quantum Lab onboarding
+# Qiskit Lab onboarding
 
-Read `AGENTS.md` and `.agents/skills/quantum-lab/SKILL.md`.
+Read `AGENTS.md` and `.agents/skills/qiskit-lab/SKILL.md`.
 Steps are safe to repeat; never submit a hardware job during onboarding.
 
 1. Install dependencies and run the local Bell smoke test:
@@ -9,7 +9,7 @@ Steps are safe to repeat; never submit a hardware job during onboarding.
 2. Run `scripts/dam/quantum doctor --online`. If it succeeds and returns
    accessible backends, reuse the existing SDK account. Do not inspect it.
 3. If credentials are missing, ask the owner to open this agent's **Terminal**
-   in DAM, `cd ~/work/quantum-lab` (private CLI installation; for a catalog seed,
+   in DAM, `cd ~/work/qiskit-lab` (private CLI installation; for a catalog seed,
    use the checkout directory the platform briefing gives), and run:
    `uv run --locked --project dam python scripts/dam/configure-quantum.py`.
    The owner supplies the instance CRN and API key directly to a hidden prompt.

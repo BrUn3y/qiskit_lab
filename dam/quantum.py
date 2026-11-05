@@ -1,4 +1,4 @@
-"""Quantum Lab's framework-independent command line tools for DAM.
+"""Qiskit Lab's framework-independent command line tools for DAM.
 
 All stdout is JSON. Credentials are consumed by the IBM SDK, never emitted.
 Hardware submission is explicit and is never automatically retried.
@@ -146,7 +146,7 @@ def execute(args):
             raise UserError("The selected backend has too few qubits.")
         isa_circuit = generate_preset_pass_manager(backend=backend, optimization_level=1).run(circuit)
         sampler = SamplerV2(mode=backend, options={"max_execution_time": args.max_execution_time,
-                                                  "environment": {"job_tags": ["quantum-lab-dam"]}})
+                                                  "environment": {"job_tags": ["qiskit-lab-dam"]}})
         # Never retry run(): a network error may occur after IBM accepted a job.
         job = sampler.run([isa_circuit], shots=args.shots)
         receipt.update(backend=backend.name, job_id=job.job_id(), status="SUBMITTED")
@@ -331,7 +331,7 @@ def main(argv=None):
         # SDK exception messages can contain request bodies or credentials.
         print(json.dumps({"error": type(error).__name__, "next_step":
                           "Check inputs, IBM Quantum credentials, instance CRN and DAM egress. "
-                          "If a hardware submission was attempted, inspect IBM jobs tagged quantum-lab-dam "
+                          "If a hardware submission was attempted, inspect IBM jobs tagged qiskit-lab-dam "
                           "before trying again."}))
     return 1
 

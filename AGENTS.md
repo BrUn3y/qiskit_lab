@@ -1,7 +1,7 @@
-# Quantum Lab on DAM
+# Qiskit Lab on DAM
 
 This checkout is the private DAM edition of BrUn3y/quantum_lab_agent.
-Read `.agents/skills/quantum-lab/SKILL.md` before doing quantum work.
+Read `.agents/skills/qiskit-lab/SKILL.md` before doing quantum work.
 For initial setup follow `ONBOARDING.md`. `CLAUDE.md` points here too.
 
 Use DAM's current model/harness for reasoning and circuit development. Use
@@ -15,7 +15,7 @@ Then submit once with `--hardware`, preserve and return the job ID, backend,
 shots and artifact paths. The default is local simulation. A named IBM backend
 also requires `--hardware`; never silently spend QPU time. Never retry a failed
 submission automatically: it might already have reached IBM. Query the IBM
-Quantum dashboard for jobs tagged `quantum-lab-dam` before a user-requested retry.
+Quantum dashboard for jobs tagged `qiskit-lab-dam` before a user-requested retry.
 The execution-time option limits QPU execution per job, not cost or queue time.
 
 Never read, print, copy, commit or upload `.env`, `.qiskit`, SDK account files,

@@ -1,5 +1,5 @@
 ---
-name: quantum-lab
+name: qiskit-lab
 description: Develop quantum circuits, simulate algorithms, inspect IBM Quantum backends, submit explicitly requested QPU jobs, retrieve results, and run QAOA Max-Cut experiments from DAM.
 ---
 

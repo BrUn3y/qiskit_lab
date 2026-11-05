@@ -1,4 +1,4 @@
-# ⚛️ Quantum Lab — DAM starter kit
+# ⚛️ Qiskit Lab — DAM starter kit
 
 Tu laboratorio cuántico en [DAM](https://dam.res.ibm.com/), conectado a **IBM Quantum Platform** mediante Qiskit Runtime y `SamplerV2`.
 
@@ -6,7 +6,7 @@ Versión privada derivada de [BrUn3y/quantum_lab_agent](https://github.com/BrUn3
 
 ```mermaid
 flowchart LR
-    U[Usuario en DAM] --> A[Quantum Lab · modelo de DAM]
+    U[Usuario en DAM] --> A[Qiskit Lab · modelo de DAM]
     A --> D[Desarrollo Qiskit / OpenQASM]
     A --> T[Herramientas Python]
     T --> S[Simulador local y QAOA]
@@ -32,30 +32,30 @@ Requisitos locales: Node.js 20+, CLI **DAM 0.2.24**, Git y Python 3.11+. Dentro 
 ```sh
 npm install -g @dam-agents/cli@0.2.24
 dam auth login --server https://dam.res.ibm.com
-git clone https://github.com/BrUn3y/quantum_lab_agent_dam.git
-cd quantum_lab_agent_dam
-python3 scripts/dam/deploy.py --name quantum-lab
+git clone https://github.com/BrUn3y/qiskit_lab.git
+cd qiskit_lab
+python3 scripts/dam/deploy.py --name 'Qiskit Lab'
 ```
 
-El instalador usa tu proveedor de modelos preferido en DAM, crea el agente, configura la red, importa **solo archivos rastreados por Git** a `~/work/quantum-lab` e inicia el onboarding. No envía `.git`, credenciales, entornos locales ni resultados. El agente recibe el código privado sin necesitar una conexión GitHub.
+El instalador usa tu proveedor de modelos preferido en DAM, crea el agente, configura la red, importa **solo archivos rastreados por Git** a `~/work/qiskit-lab` e inicia el onboarding. Si el proveedor ofrece un solo modelo, lo configura automáticamente; si hay varios, indica `--model`. No envía `.git`, credenciales, entornos locales ni resultados. El agente recibe el código privado sin necesitar una conexión GitHub.
 
 Opciones: `--provider 'Nombre del proveedor'`, `--model ALIAS/ID_MODELO`, `--instance CRN` (no secreto), `--no-run`. El ID y la sesión quedan en `.dam-deploy/deployment.json`, ignorado por Git. Si falla tras crear el agente, usa `--existing` para continuar deliberadamente.
 
 ```sh
 dam connection list --providers
-dam agent models quantum-lab
-dam agent update quantum-lab --model ALIAS/ID_MODELO
+dam agent models 'Qiskit Lab'
+dam agent update 'Qiskit Lab' --model ALIAS/ID_MODELO
 ```
 
 **Límite de DAM:** “añadir kit por enlace” solo admite repositorios públicos de GitHub. No pegues el enlace privado en ese formulario. El instalador usa la ruta soportada por la CLI y crea un agente normal, sin etiqueta de starter kit. `kit.yaml` conserva el formato oficial y puede añadirse a un catálogo administrado con acceso al repositorio; eso requiere al administrador del despliegue.
 
 ## Conectar IBM Quantum Platform
 
-1. Abre `quantum-lab` en [DAM](https://dam.res.ibm.com/) y entra en su **Terminal**.
+1. Abre **Qiskit Lab** en [DAM](https://dam.res.ibm.com/) y entra en su **Terminal**.
 2. Ejecuta tú mismo, directamente allí:
 
    ```sh
-   cd ~/work/quantum-lab
+   cd ~/work/qiskit-lab
    uv run --locked --project dam python scripts/dam/configure-quantum.py
    ```
 
@@ -78,11 +78,11 @@ Consulta el estado y los resultados del job ID_QUE_DEVOLVIO_IBM.
 ```
 
 ```sh
-dam run quantum-lab -p 'Crea un estado Bell y simúlalo con 1024 shots'
-dam chat quantum-lab
+dam run 'Qiskit Lab' -p 'Crea un estado Bell y simúlalo con 1024 shots'
+dam chat 'Qiskit Lab'
 ```
 
-La simulación es el comportamiento predeterminado. Cuando pides hardware real, se envía un job y se devuelve el Job ID sin esperar toda la cola. Consulta después ese mismo ID. El límite predeterminado de ejecución QPU es 300 segundos por job; no limita el costo ni la espera. Si se pierde la respuesta de un envío, revisa en IBM los jobs etiquetados `quantum-lab-dam` antes de solicitar otro.
+La simulación es el comportamiento predeterminado. Cuando pides hardware real, se envía un job y se devuelve el Job ID sin esperar toda la cola. Consulta después ese mismo ID. El límite predeterminado de ejecución QPU es 300 segundos por job; no limita el costo ni la espera. Si se pierde la respuesta de un envío, revisa en IBM los jobs etiquetados `qiskit-lab-dam` antes de solicitar otro.
 
 ## Herramientas y desarrollo local
 
@@ -116,8 +116,8 @@ CI ejecuta esas pruebas en Linux: algoritmos, QASM, correlaciones, QAOA, contrat
 
 ```sh
 git pull
-python3 scripts/dam/deploy.py --name quantum-lab --existing --no-run
-dam run quantum-lab -p 'En ~/work/quantum-lab ejecuta bash scripts/dam/setup.sh y verifica IBM; no envíes jobs.'
+python3 scripts/dam/deploy.py --name 'Qiskit Lab' --existing --no-run
+dam run 'Qiskit Lab' -p 'En ~/work/qiskit-lab ejecuta bash scripts/dam/setup.sh y verifica IBM; no envíes jobs.'
 ```
 
 En DAM 0.2.24 la importación puede sustituir la carpeta de código completa. Descarga antes los artefactos que quieras conservar con `dam file get`. La cuenta del SDK queda fuera de esa carpeta. No elimines el agente para actualizar: eliminarlo también borra su cuenta y datos.

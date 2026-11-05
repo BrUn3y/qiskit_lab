@@ -1,16 +1,16 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/dam-agents/dam-starter-kits/main/kit.schema.json
 schemaVersion: v1
-id: quantum-lab
-name: Quantum Lab
+id: qiskit-lab
+name: Qiskit Lab
 tagline: Develop, simulate and execute quantum experiments on IBM Quantum Platform.
 description: >-
-  Adapts BrUn3y's Quantum Lab to a DAM coding agent with Qiskit tools for
+  Adapts BrUn3y's Qiskit Lab to a DAM coding agent with Qiskit tools for
   Bell, GHZ, Grover, Deutsch–Jozsa, live backend inspection, SamplerV2 QPU
   submission, job results, and locally validated QAOA Max-Cut experiments.
   IBM Quantum credentials are configured by the owner in a hidden terminal prompt.
 category: research
 icon: atom
-docsUrl: https://github.com/BrUn3y/quantum_lab_agent_dam
+docsUrl: https://github.com/BrUn3y/qiskit_lab
 harnesses: [claude-code, codex, pi, bob]
 seed:
   self: true

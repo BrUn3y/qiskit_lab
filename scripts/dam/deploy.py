@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HOSTS = ("pypi.org", "files.pythonhosted.org", "github.com", "release-assets.githubusercontent.com",
          "iam.cloud.ibm.com", "resource-controller.cloud.ibm.com", "quantum.cloud.ibm.com",
          "us-east.quantum.cloud.ibm.com", "eu-de.quantum.cloud.ibm.com")
-BOOTSTRAP = """Trabaja en ~/work/quantum-lab. Lee AGENTS.md, CLAUDE.md y ONBOARDING.md.
+BOOTSTRAP = """Trabaja en ~/work/qiskit-lab. Lee AGENTS.md, CLAUDE.md y ONBOARDING.md.
 Sigue el onboarding: ejecuta bash scripts/dam/setup.sh, prueba Bell, Grover,
 Deutsch–Jozsa y QAOA Max-Cut local de cinco nodos. Después prueba
 scripts/dam/quantum doctor --online. No envíes ningún job a hardware durante el
@@ -55,9 +55,27 @@ def copy_tracked(destination):
         raise RuntimeError("Missing tracked DAM lockfile. Commit or stage the kit before deployment.")
 
 
+def configure_model(agent_id, requested_model=None):
+    if requested_model:
+        run(["dam", "agent", "update", agent_id, "--model", requested_model, "--json"], as_json=True)
+        return requested_model
+    agent = run(["dam", "agent", "get", agent_id, "--json"], as_json=True)
+    current = (agent.get("models", {}).get("defaults", {}).get("chat") or {}).get("model")
+    if current:
+        return current
+    catalog = run(["dam", "agent", "models", agent_id, "--json"], as_json=True)
+    models = [model["name"] for provider in catalog.get("providers", []) for model in provider.get("models", [])]
+    if len(models) != 1:
+        raise RuntimeError("DAM has no default model. List dam agent models and rerun --existing --model ALIAS/MODEL; "
+                           "if the provider is unavailable, select a working --provider when creating a new agent.")
+    run(["dam", "agent", "update", agent_id, "--model", models[0], "--json"], as_json=True)
+    print(f"Default model: {models[0]}", flush=True)
+    return models[0]
+
+
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
-    cli.add_argument("--name", default="quantum-lab")
+    cli.add_argument("--name", default="Qiskit Lab")
     cli.add_argument("--template", default="default")
     cli.add_argument("--provider", help="Existing DAM model provider; defaults to your preferred provider")
     cli.add_argument("--model", help="Optional model from dam agent models")
@@ -70,19 +88,19 @@ def main():
     if len(matches) > 1:
         raise RuntimeError("Agent name is ambiguous. Choose a unique name.")
     if matches and not args.existing:
-        raise RuntimeError("Agent already exists. Use --existing only to deliberately update its quantum-lab folder.")
+        raise RuntimeError("Agent already exists. Use --existing only to deliberately update its qiskit-lab folder.")
     if not matches and args.existing:
         raise RuntimeError("--existing requires an agent that already exists.")
     # Validate the package before creating any platform resources.
-    with tempfile.TemporaryDirectory(prefix="quantum-lab-dam-") as temporary:
-        package = Path(temporary) / "quantum-lab"
+    with tempfile.TemporaryDirectory(prefix="qiskit-lab-dam-") as temporary:
+        package = Path(temporary) / "qiskit-lab"
         package.mkdir()
         copy_tracked(package)
         if matches:
             agent_id = matches[0]["id"]
         else:
             command = ["dam", "agent", "create", args.name, "--template", args.template,
-                       "--description", "Quantum Lab: Qiskit and IBM Quantum Platform", "--json"]
+                       "--description", "Qiskit Lab: Qiskit and IBM Quantum Platform", "--json"]
             if args.provider:
                 command += ["--provider", args.provider]
             if args.instance:
@@ -102,10 +120,10 @@ def main():
                 print(f"Allow network: {host}", flush=True)
                 run(["dam", "network", "create", agent_id, "--host", host, "--yes", "--json"], as_json=True)
         imported = run(["dam", "import", agent_id, str(package), "--yes", "--json"], as_json=True)
-        print("Tracked project imported into ~/work/quantum-lab.", flush=True)
+        print("Tracked project imported into ~/work/qiskit-lab.", flush=True)
         deployment["import"] = imported
-        if args.model:
-            run(["dam", "agent", "update", agent_id, "--model", args.model, "--json"], as_json=True)
+        state_path.write_text(json.dumps(deployment, indent=2) + "\n")
+        deployment["model"] = configure_model(agent_id, args.model)
         if not args.no_run:
             prompt_file = Path(temporary) / "bootstrap.txt"
             prompt_file.write_text(BOOTSTRAP)
