@@ -1,6 +1,7 @@
 # Qiskit Lab on DAM
 
 This checkout is the private DAM edition of BrUn3y/quantum_lab_agent.
+Use English for all code, comments, documentation and agent responses.
 Read `.agents/skills/qiskit-lab/SKILL.md` before doing quantum work.
 For initial setup follow `ONBOARDING.md`. `CLAUDE.md` points here too.
 

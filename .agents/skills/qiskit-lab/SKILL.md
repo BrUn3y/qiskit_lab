@@ -71,7 +71,7 @@ persist or transfer it; guide the owner to replace it through the hidden prompt.
 
 ## Reporting
 
-Match the user's language. Cite actual tool output. Include backend, shots,
+Respond in English. Cite actual tool output. Include backend, shots,
 job ID (hardware only), observed status, UTC timestamp and artifact paths.
 Explain queue delays and allow later job inspection. Never fabricate a QPU,
 job, measurement result, or successful connection. Do not log raw SDK errors

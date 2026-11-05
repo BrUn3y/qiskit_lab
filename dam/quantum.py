@@ -223,12 +223,11 @@ def onboarding():
     """Describe the first-chat connection step without opening credential files."""
     setup = "cd ~/work/qiskit-lab && uv run --locked --project dam python scripts/dam/configure-quantum.py"
     request = {"status": "needs_credentials", "channel": "ibm_quantum_platform",
-                "message": "Para conectar Qiskit Lab a IBM Quantum necesito que configures tu API key "
-                           "y, si lo tienes, el CRN de tu instancia. No pegues la clave en el chat: "
-                           "abre la Terminal de este agente y ejecuta el comando de configuración. "
-                           "Si configuras el entorno del proceso, la variable de la API key es QISKIT_IBM_TOKEN "
-                           "(también se admite QISKIT_IBM_RUNTIME_APIKEY); el CRN va en QISKIT_IBM_INSTANCE. "
-                           "También puedes continuar con el simulador local.",
+                "message": "To connect Qiskit Lab to IBM Quantum, configure your API key and, if available, "
+                           "your instance CRN. Do not paste the key into chat: open this agent's Terminal "
+                           "and run the setup command. For environment configuration, use QISKIT_IBM_TOKEN "
+                           "for the API key (QISKIT_IBM_RUNTIME_APIKEY is also supported), and "
+                           "QISKIT_IBM_INSTANCE for the CRN. You can also continue with local simulation.",
                 "setup_command": setup, "credential_entry": "hidden_terminal_prompt", "hardware_ready": False,
                 "api_key_env": "QISKIT_IBM_TOKEN", "api_key_env_alias": "QISKIT_IBM_RUNTIME_APIKEY",
                 "instance_env": "QISKIT_IBM_INSTANCE"}
@@ -245,8 +244,8 @@ def onboarding():
     except Exception as error:  # noqa: BLE001 - Return safe SDK error classes without request bodies
         return {"status": "connection_error", "channel": "ibm_quantum_platform",
                 "error": type(error).__name__, "hardware_ready": False,
-                "message": "Hay una cuenta configurada, pero no se pudo verificar la conexión. "
-                           "Revisa credenciales, instancia y red; no pegues claves en el chat.",
+                "message": "An account is configured, but the connection could not be verified. "
+                           "Check the credentials, instance and network; do not paste keys into chat.",
                 "setup_command": setup}
     return {"status": "ready" if backends else "no_backends", "channel": "ibm_quantum_platform",
             "hardware_ready": bool(backends), "backends": backends, "queried_at": now()}

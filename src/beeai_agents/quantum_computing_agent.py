@@ -102,7 +102,7 @@ COMPUTING_AGENT_SKILLS = [
     )
 ]
 
-# Crear servidor AgentStack
+# Create the Agent Stack server.
 server = Server()
 
 
@@ -316,7 +316,7 @@ async def quantum_computing_agent(
             content="- [x] QASM code extracted\n- [x] Circuit transpiled\n- [x] Job submitted to IBM Quantum"
         )
         
-        # Extraer la respuesta
+        # Extract the response.
         response = ""
         if hasattr(run_context, 'output') and run_context.output:
             output = run_context.output
@@ -350,7 +350,7 @@ async def quantum_computing_agent(
         # Create the response message
         response_message = AgentMessage(text=response)
         
-        # Yield la respuesta al usuario
+        # Yield the response to the user.
         yield response_message
         
     except Exception as e:

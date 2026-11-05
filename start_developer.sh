@@ -2,28 +2,28 @@
 
 export DEVELOPER_MODEL="${DEVELOPER_MODEL:-ollama:granite4.2:8b}"
 
-# Script para iniciar el Quantum Developer Agent
-# Puerto: 8001
-# Modelo: Granite 4.2 8B mediante Ollama
+# Start the Quantum Developer Agent.
+# Port: 8001
+# Model: Granite 4.2 8B through Ollama
 
 echo "=================================="
 echo "🎯 Quantum Developer Agent"
 echo "=================================="
 echo ""
-echo "Iniciando agente experto en código cuántico..."
-echo "Puerto: 8001"
-echo "Modelo: $DEVELOPER_MODEL"
+echo "Starting the quantum code specialist agent..."
+echo "Port: 8001"
+echo "Model: $DEVELOPER_MODEL"
 echo ""
-echo "Presiona Ctrl+C para detener"
+echo "Press Ctrl+C to stop"
 echo "=================================="
 echo ""
 
-# Activar entorno virtual si existe
+# Activate the virtual environment if available.
 if [ -d ".venv" ]; then
     source .venv/bin/activate
 fi
 
-# Iniciar el Developer Agent y conservar su salida para view_logs.sh.
+# Start the Developer Agent and preserve its output for view_logs.sh.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="${AGENT_LOG_DIR:-$SCRIPT_DIR/.logs}"
 mkdir -p "$LOG_DIR"

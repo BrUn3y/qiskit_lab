@@ -380,7 +380,7 @@ DEVELOPER_AGENT_SKILLS = [
     )
 ]
 
-# Crear servidor AgentStack
+# Create the Agent Stack server.
 server = Server()
 
 _SUPERPOSITION_PATTERN = re.compile(r"\b(superposition|superposici[oó]n)\b", re.IGNORECASE)
@@ -683,7 +683,7 @@ async def quantum_developer_agent(
         # Create the response message
         response_message = AgentMessage(text=response)
         
-        # Yield la respuesta al usuario
+        # Yield the response to the user.
         yield response_message
         
     except Exception as e:

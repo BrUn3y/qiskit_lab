@@ -4,10 +4,10 @@ Read `AGENTS.md` and `.agents/skills/qiskit-lab/SKILL.md`.
 Steps are safe to repeat; never submit a hardware job during onboarding.
 
 1. Run `scripts/dam/quantum onboarding` before the first chat reply. If it reports
-   `needs_credentials`, open with: "Para conectar Qiskit Lab a IBM Quantum
-   necesito que configures tu API key y, si lo tienes, el CRN de tu instancia."
-   Explain the hidden entry step below and offer "Configurar IBM Quantum" or
-   "Continuar con simulador". Do not run or narrate algorithm demos before this
+   `needs_credentials`, open with: "To connect Qiskit Lab to IBM Quantum,
+   configure your API key and, if available, your instance CRN."
+   Explain the hidden entry step below and offer "Configure IBM Quantum" or
+   "Continue with local simulation". Do not run or narrate algorithm demos before this
    invitation. Name the API-key environment variable `QISKIT_IBM_TOKEN` (alias
    `QISKIT_IBM_RUNTIME_APIKEY`) and the instance variable `QISKIT_IBM_INSTANCE`.
    Explain that the hidden setup saves an SDK account without requiring these

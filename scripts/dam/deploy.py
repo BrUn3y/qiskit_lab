@@ -19,16 +19,16 @@ ROOT = Path(__file__).resolve().parents[2]
 HOSTS = ("pypi.org", "files.pythonhosted.org", "github.com", "release-assets.githubusercontent.com",
          "iam.cloud.ibm.com", "resource-controller.cloud.ibm.com", "quantum.cloud.ibm.com",
          "us-east.quantum.cloud.ibm.com", "eu-de.quantum.cloud.ibm.com")
-BOOTSTRAP = """Trabaja en ~/work/qiskit-lab. Lee AGENTS.md y ONBOARDING.md.
-Ejecuta scripts/dam/quantum onboarding. Si falta la cuenta, tu primera respuesta
-debe pedir al usuario que configure su API key de IBM Quantum, mostrar el comando
-de configuración con prompt oculto en su propia Terminal de DAM y ofrecer el
-simulador local. No ejecutes demostraciones antes de esta invitación. No solicites
-la clave como texto o formulario del chat, no leas credenciales ni ejecutes tú el
-prompt oculto. Menciona QISKIT_IBM_TOKEN como variable de la API key, el alias
-QISKIT_IBM_RUNTIME_APIKEY y QISKIT_IBM_INSTANCE para el CRN; el prompt oculto guarda
-la cuenta del SDK y no requiere esas variables. Si la cuenta ya está verificada,
-reutilízala. No envíes jobs a QPU.
+BOOTSTRAP = """Work in ~/work/qiskit-lab. Read AGENTS.md and ONBOARDING.md.
+Run scripts/dam/quantum onboarding. If the account is missing, your first reply
+must ask the owner to configure the IBM Quantum API key, show the hidden-prompt
+setup command for their own DAM Terminal, and offer local simulation.
+Do not run demos before that invitation. Do not collect the key as chat text or
+in a chat form, read credentials, or run the hidden prompt yourself.
+Name QISKIT_IBM_TOKEN as the API-key variable, QISKIT_IBM_RUNTIME_APIKEY as its
+supported alias and QISKIT_IBM_INSTANCE for the CRN. Hidden setup saves an SDK
+account and does not require those variables. Reuse an account already verified.
+Do not submit QPU jobs. All replies and documentation must be in English.
 """
 HOME_START = "<!-- qiskit-lab:instructions:start -->"
 HOME_END = "<!-- qiskit-lab:instructions:end -->"
@@ -48,7 +48,7 @@ account instead, so setting environment variables is optional.
 Do not collect the key in chat or a masked chat form; both enter the transcript.
 Do not run algorithm demos before that invitation. If ready, reuse the verified
 account without asking again. Explain a connection_error without reading secrets.
-Never submit a hardware job during onboarding. Follow the user's language.
+Never submit a hardware job during onboarding. Always respond in English.
 {HOME_END}"""
 
 
