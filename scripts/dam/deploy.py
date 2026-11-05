@@ -70,6 +70,9 @@ Every completed simulation, experiment and hardware job must have a Carbon HTML
 report. Return report_path as a supported DAM file link. Pending hardware jobs
 are checked by the Qiskit Lab job reports schedule; never resubmit them.
 {HOME_END}"""
+HOME_CLAUDE_INSTRUCTIONS = f"""{HOME_START}
+@AGENTS.md
+{HOME_END}"""
 
 
 def run(arguments, *, as_json=False):
@@ -154,20 +157,26 @@ def select_agent(agents, name, agent_id, existing):
     return matches[0] if matches else None
 
 
-def merge_home_instructions(existing):
+def merge_home_instructions(existing, instructions=HOME_INSTRUCTIONS):
     if (HOME_START in existing) != (HOME_END in existing):
         raise RuntimeError("Incomplete Qiskit Lab instructions block; preserving the home instructions unchanged.")
     existing = re.sub(re.escape(HOME_START) + r".*?" + re.escape(HOME_END), "", existing, flags=re.DOTALL)
-    return existing.rstrip() + "\n\n" + HOME_INSTRUCTIONS + "\n"
+    return existing.rstrip() + "\n\n" + instructions + "\n"
 
 
 def install_home_instructions(agent_id, temporary):
     # Preserve DAM and owner instructions outside our managed section. Do not
     # replace the workspace just to update the first-chat behavior.
-    existing = run(["dam", "file", "get", agent_id, "AGENTS.md", "--stdout"])
-    path = Path(temporary) / "home-AGENTS.md"
-    path.write_text(merge_home_instructions(existing))
-    run(["dam", "file", "put", agent_id, str(path), "AGENTS.md", "--overwrite"])
+    for name, instructions in [("AGENTS.md", HOME_INSTRUCTIONS), ("CLAUDE.md", HOME_CLAUDE_INSTRUCTIONS)]:
+        try:
+            existing = run(["dam", "file", "get", agent_id, name, "--stdout"])
+        except RuntimeError as error:
+            if f"not found: {name}" not in str(error):
+                raise
+            existing = ""
+        path = Path(temporary) / f"home-{name}"
+        path.write_text(merge_home_instructions(existing, instructions))
+        run(["dam", "file", "put", agent_id, str(path), name, "--overwrite"])
 
 
 def configure_report_schedule(agent_id):

@@ -52,6 +52,44 @@ def test_first_chat_instructions_preserve_owner_text_and_are_idempotent():
         module.merge_home_instructions(original + module.HOME_START)
 
 
+@pytest.mark.parametrize("claude_exists", [False, True])
+def test_home_instructions_load_natively_and_preserve_owner_rules(deploy, monkeypatch, tmp_path, claude_exists):
+    files = {"AGENTS.md": "# Owner agent rules\nKeep my project notes.\n"}
+    if claude_exists:
+        files["CLAUDE.md"] = "# Owner Claude rules\nUse my preferred style.\n"
+    original = files.copy()
+
+    def run(arguments):
+        assert arguments[3] == "agent-target"
+        if arguments[2] == "get":
+            name = arguments[4]
+            if name not in files:
+                raise RuntimeError(f"dam file failed: error: not found: {name}")
+            return files[name]
+        assert arguments[2] == "put"
+        files[arguments[5]] = Path(arguments[4]).read_text()
+
+    monkeypatch.setattr(deploy, "run", run)
+    deploy.install_home_instructions("agent-target", tmp_path)
+    for name, text in original.items():
+        assert text.strip() in files[name]
+    assert "@AGENTS.md" in files["CLAUDE.md"].splitlines()
+    assert "quantum onboarding" in files["AGENTS.md"]
+    installed = files.copy()
+    deploy.install_home_instructions("agent-target", tmp_path)
+    assert files == installed
+
+
+def test_home_instruction_read_errors_do_not_overwrite_owner_files(deploy, monkeypatch, tmp_path):
+    from unittest.mock import Mock
+
+    run = Mock(side_effect=RuntimeError("dam file failed: connection refused"))
+    monkeypatch.setattr(deploy, "run", run)
+    with pytest.raises(RuntimeError, match="connection refused"):
+        deploy.install_home_instructions("agent-target", tmp_path)
+    run.assert_called_once()
+
+
 def test_update_preserves_remote_results_and_environment(deploy, monkeypatch, tmp_path):
     package = tmp_path / "package"
     package.mkdir()

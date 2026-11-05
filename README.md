@@ -69,7 +69,7 @@ dam agent update 'Qiskit Lab' --model ALIAS/MODEL_ID
 
 ## Connect IBM Quantum Platform
 
-The first response in a new chat checks the connection. If the account is missing, Qiskit Lab asks you to configure your API key, shows the hidden-entry command, and offers local simulation. It reuses an account that already works. The installer adds these instructions to `~/AGENTS.md` while preserving existing instructions, so they also apply to new DAM conversations.
+The first response in a new chat checks the connection. If the account is missing, Qiskit Lab asks you to configure your API key, shows the hidden-entry command, and offers local simulation. It reuses an account that already works. The installer adds these instructions to `~/AGENTS.md` and a native `@AGENTS.md` import to `~/CLAUDE.md`, preserving existing owner instructions in both files. Claude Code can load the startup rules before its first response, as can harnesses that load `AGENTS.md` directly.
 
 1. Open **Qiskit Lab** in [DAM](https://dam.res.ibm.com/) and open its **Terminal**.
 2. Run this command yourself in that terminal:
