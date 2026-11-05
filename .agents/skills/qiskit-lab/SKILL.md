@@ -41,6 +41,12 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
 
 ## IBM setup
 
+At the start of a new chat run `scripts/dam/quantum onboarding`. If it returns
+`needs_credentials`, your first reply asks the owner to configure their IBM
+Quantum API key and CRN, shows the command below, and offers local simulation
+until setup is complete. If `ready`, reuse the account without asking again.
+For connection errors, explain the failure; never inspect credential files.
+
 Never request an API key in chat. Show the user this command to run themselves
 in DAM's browser Terminal, from the project root:
 
@@ -54,6 +60,9 @@ and saves an SDK account with restricted file permissions. Then run
 and keep the connection step pending. Never inspect the saved account file.
 DAM custom-header env credentials are placeholders; they cannot provide the
 actual API key in the IBM IAM form body, so do not substitute that mechanism.
+DAM chat password fields also reach the transcript in plain text; do not use
+them to collect keys. If a key is pasted into a conversation, do not echo,
+persist or transfer it; guide the owner to replace it through the hidden prompt.
 
 ## Reporting
 

@@ -162,3 +162,50 @@ def test_comparison_normalizes_different_shot_totals(tmp_path):
     assert result["left_shots"] == 100
     assert result["right_shots"] == 200
     assert result["total_variation_distance"] == .25
+
+
+def test_first_chat_requests_setup_without_reading_credentials(monkeypatch, tmp_path, offline):
+    monkeypatch.delenv("QISKIT_IBM_TOKEN", raising=False)
+    monkeypatch.delenv("QISKIT_IBM_RUNTIME_APIKEY", raising=False)
+    monkeypatch.setattr(quantum.Path, "home", lambda: tmp_path)
+    response = quantum.onboarding()
+    assert response["status"] == "needs_credentials"
+    assert response["credential_entry"] == "hidden_terminal_prompt"
+    assert "API key" in response["message"]
+    assert "configure-quantum.py" in response["setup_command"]
+    assert not response["hardware_ready"]
+    offline.assert_not_called()
+
+
+def test_first_chat_reuses_verified_account_without_requesting_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("QISKIT_IBM_TOKEN", raising=False)
+    monkeypatch.delenv("QISKIT_IBM_RUNTIME_APIKEY", raising=False)
+    monkeypatch.setattr(quantum.Path, "home", lambda: tmp_path)
+    account = tmp_path / ".qiskit/qiskit-ibm.json"
+    account.parent.mkdir()
+    # Deliberately invalid JSON proves the guard does not read the file itself.
+    account.write_text("not-readable-as-an-sdk-account")
+    backend = SimpleNamespace(name="ibm_test", num_qubits=3,
+                              status=lambda: SimpleNamespace(operational=True, pending_jobs=0, status_msg="active"))
+    service = Mock()
+    service.backends.return_value = [backend]
+    monkeypatch.setattr(quantum, "runtime_service", lambda: service)
+    response = quantum.onboarding()
+    assert response["status"] == "ready"
+    assert response["hardware_ready"]
+    assert "setup_command" not in response
+    service.backends.assert_called_once_with(simulator=False)
+
+
+def test_first_chat_distinguishes_connection_error_from_missing_account(monkeypatch, tmp_path):
+    monkeypatch.delenv("QISKIT_IBM_TOKEN", raising=False)
+    monkeypatch.delenv("QISKIT_IBM_RUNTIME_APIKEY", raising=False)
+    monkeypatch.setattr(quantum.Path, "home", lambda: tmp_path)
+    account = tmp_path / ".qiskit/qiskit-ibm.json"
+    account.parent.mkdir()
+    account.touch()
+    monkeypatch.setattr(quantum, "runtime_service", Mock(side_effect=ConnectionError("private-request-body")))
+    response = quantum.onboarding()
+    assert response["status"] == "connection_error"
+    assert response["error"] == "ConnectionError"
+    assert "private-request-body" not in str(response)

@@ -51,6 +51,14 @@ dam agent update 'Qiskit Lab' --model ALIAS/ID_MODELO
 
 ## Conectar IBM Quantum Platform
 
+La primera respuesta de un chat nuevo comprueba la conexión. Si falta la cuenta,
+Qiskit Lab te pide configurar tu API key y te muestra el comando de entrada oculta;
+también ofrece continuar con el simulador. Si la cuenta ya funciona, la reutiliza.
+El instalador añade esta instrucción a `~/AGENTS.md`, conservando las instrucciones
+existentes, para que funcione incluso al abrir una conversación nueva desde DAM.
+No introduce campos de contraseña en el chat: DAM también guarda sus valores en
+el historial. La clave se introduce directamente en la Terminal del agente.
+
 1. Abre **Qiskit Lab** en [DAM](https://dam.res.ibm.com/) y entra en su **Terminal**.
 2. Ejecuta tú mismo, directamente allí:
 

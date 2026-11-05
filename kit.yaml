@@ -36,4 +36,4 @@ resources:
 bundledSkills:
   path: .agents/skills
 onboarding:
-  prompt: Read AGENTS.md and follow ONBOARDING.md. Test the local Bell simulator first. Never ask for or read a secret. Guide the owner to configure IBM Quantum from their own DAM Terminal, then verify live backend access. Never submit a QPU job unless requested.
+  prompt: Read AGENTS.md and follow ONBOARDING.md. Run scripts/dam/quantum onboarding before your first reply. If the account is missing, first invite the owner to configure the IBM Quantum API key using the hidden Terminal prompt; offer local simulation. Reuse an existing verified account. Never collect a key in chat or submit a QPU job during onboarding.

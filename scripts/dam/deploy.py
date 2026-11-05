@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -18,15 +19,29 @@ ROOT = Path(__file__).resolve().parents[2]
 HOSTS = ("pypi.org", "files.pythonhosted.org", "github.com", "release-assets.githubusercontent.com",
          "iam.cloud.ibm.com", "resource-controller.cloud.ibm.com", "quantum.cloud.ibm.com",
          "us-east.quantum.cloud.ibm.com", "eu-de.quantum.cloud.ibm.com")
-BOOTSTRAP = """Trabaja en ~/work/qiskit-lab. Lee AGENTS.md, CLAUDE.md y ONBOARDING.md.
-Sigue el onboarding: ejecuta bash scripts/dam/setup.sh, prueba Bell, Grover,
-Deutsch–Jozsa y QAOA Max-Cut local de cinco nodos. Después prueba
-scripts/dam/quantum doctor --online. No envíes ningún job a hardware durante el
-onboarding. No leas archivos de credenciales ni variables secretas. Si falta la
-cuenta IBM Quantum, muestra al usuario el comando de configuración para que él
-lo ejecute en su propia Terminal de DAM, con prompt oculto. No lo ejecutes tú.
-Reporta en español los resultados reales, rutas de artefactos y el paso pendiente.
+BOOTSTRAP = """Trabaja en ~/work/qiskit-lab. Lee AGENTS.md y ONBOARDING.md.
+Ejecuta scripts/dam/quantum onboarding. Si falta la cuenta, tu primera respuesta
+debe pedir al usuario que configure su API key de IBM Quantum, mostrar el comando
+de configuración con prompt oculto en su propia Terminal de DAM y ofrecer el
+simulador local. No ejecutes demostraciones antes de esta invitación. No solicites
+la clave como texto o formulario del chat, no leas credenciales ni ejecutes tú el
+prompt oculto. Si la cuenta ya está verificada, reutilízala. No envíes jobs a QPU.
 """
+HOME_START = "<!-- qiskit-lab:instructions:start -->"
+HOME_END = "<!-- qiskit-lab:instructions:end -->"
+HOME_INSTRUCTIONS = f"""{HOME_START}
+You are Qiskit Lab. Your project is ~/work/qiskit-lab.
+At the beginning of EVERY new chat, before replying to its first user message,
+read ~/work/qiskit-lab/AGENTS.md and ~/work/qiskit-lab/ONBOARDING.md, then run
+~/work/qiskit-lab/scripts/dam/quantum onboarding.
+If status is needs_credentials, your FIRST reply asks the owner to configure
+their IBM Quantum API key and optional instance CRN, shows the returned command
+for their own DAM Terminal with hidden input, and offers local simulation.
+Do not collect the key in chat or a masked chat form; both enter the transcript.
+Do not run algorithm demos before that invitation. If ready, reuse the verified
+account without asking again. Explain a connection_error without reading secrets.
+Never submit a hardware job during onboarding. Follow the user's language.
+{HOME_END}"""
 
 
 def run(arguments, *, as_json=False):
@@ -87,6 +102,22 @@ def import_when_ready(agent_id, package):
             time.sleep(5)
 
 
+def merge_home_instructions(existing):
+    if (HOME_START in existing) != (HOME_END in existing):
+        raise RuntimeError("Incomplete Qiskit Lab instructions block; preserving the home instructions unchanged.")
+    existing = re.sub(re.escape(HOME_START) + r".*?" + re.escape(HOME_END), "", existing, flags=re.DOTALL)
+    return existing.rstrip() + "\n\n" + HOME_INSTRUCTIONS + "\n"
+
+
+def install_home_instructions(agent_id, temporary):
+    # Preserve DAM and owner instructions outside our managed section. Do not
+    # replace the workspace just to update the first-chat behavior.
+    existing = run(["dam", "file", "get", agent_id, "AGENTS.md", "--stdout"])
+    path = Path(temporary) / "home-AGENTS.md"
+    path.write_text(merge_home_instructions(existing))
+    run(["dam", "file", "put", agent_id, str(path), "AGENTS.md", "--overwrite"])
+
+
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--name", default="Qiskit Lab")
@@ -135,6 +166,7 @@ def main():
                 run(["dam", "network", "create", agent_id, "--host", host, "--yes", "--json"], as_json=True)
         imported = import_when_ready(agent_id, package)
         print("Tracked project imported into ~/work/qiskit-lab.", flush=True)
+        install_home_instructions(agent_id, temporary)
         deployment["import"] = imported
         state_path.write_text(json.dumps(deployment, indent=2) + "\n")
         deployment["model"] = configure_model(agent_id, args.model)

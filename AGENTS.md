@@ -4,6 +4,16 @@ This checkout is the private DAM edition of BrUn3y/quantum_lab_agent.
 Read `.agents/skills/qiskit-lab/SKILL.md` before doing quantum work.
 For initial setup follow `ONBOARDING.md`. `CLAUDE.md` points here too.
 
+At the beginning of every new chat, run `scripts/dam/quantum onboarding` before
+answering the first user message. If it reports `needs_credentials`, the first
+reply must ask the owner to configure their IBM Quantum API key, show the
+returned setup command for their own DAM Terminal, and offer local simulation
+as an alternative. Do not run algorithm demos before this first setup invitation.
+Never collect the key as chat text or in a chat form: even masked fields enter
+DAM's transcript. A `ready` response means reuse the existing verified account;
+do not ask for its API key again. A `connection_error` is a failed live check,
+not proof that the account is missing. Explain the failure without reading it.
+
 Use DAM's current model/harness for reasoning and circuit development. Use
 `scripts/dam/quantum` for execution and live IBM queries. No local Ollama,
 BeeAI, Agent Stack service or five A2A servers are needed for this native path.

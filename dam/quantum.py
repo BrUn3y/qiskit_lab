@@ -218,6 +218,30 @@ def doctor(args):
     return response
 
 
+def onboarding():
+    """Describe the first-chat connection step without opening credential files."""
+    setup = "cd ~/work/qiskit-lab && uv run --locked --project dam python scripts/dam/configure-quantum.py"
+    available = bool(os.environ.get("QISKIT_IBM_TOKEN") or os.environ.get("QISKIT_IBM_RUNTIME_APIKEY"))
+    available = available or (Path.home() / ".qiskit/qiskit-ibm.json").exists()
+    if not available:
+        return {"status": "needs_credentials", "channel": "ibm_quantum_platform",
+                "message": "Para conectar Qiskit Lab a IBM Quantum necesito que configures tu API key "
+                           "y, si lo tienes, el CRN de tu instancia. No pegues la clave en el chat: "
+                           "abre la Terminal de este agente y ejecuta el comando de configuración. "
+                           "También puedes continuar con el simulador local.",
+                "setup_command": setup, "credential_entry": "hidden_terminal_prompt", "hardware_ready": False}
+    try:
+        backends = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
+    except Exception as error:  # noqa: BLE001 - Return safe SDK error classes without request bodies
+        return {"status": "connection_error", "channel": "ibm_quantum_platform",
+                "error": type(error).__name__, "hardware_ready": False,
+                "message": "Hay una cuenta configurada, pero no se pudo verificar la conexión. "
+                           "Revisa credenciales, instancia y red; no pegues claves en el chat.",
+                "setup_command": setup}
+    return {"status": "ready" if backends else "no_backends", "channel": "ibm_quantum_platform",
+            "hardware_ready": bool(backends), "backends": backends, "queried_at": now()}
+
+
 def inspect_backend(args):
     from beeai_agents.backend_visualization import render_backend_dashboard
 
@@ -274,6 +298,7 @@ def bounded_integer(minimum, maximum):
 def parser():
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest="command", required=True)
+    commands.add_parser("onboarding", help="Check whether the first chat needs IBM Quantum configuration")
     check = commands.add_parser("doctor", help="Check packages and optionally IBM connectivity")
     check.add_argument("--online", action="store_true")
     commands.add_parser("backends", help="List accessible live IBM hardware")
@@ -309,7 +334,9 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
-        if args.command == "doctor":
+        if args.command == "onboarding":
+            result = onboarding()
+        elif args.command == "doctor":
             result = doctor(args)
         elif args.command == "backends":
             result = {"queried_at": now(), "backends": [backend_summary(b) for b in runtime_service().backends(simulator=False)]}
