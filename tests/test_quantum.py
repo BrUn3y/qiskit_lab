@@ -1,4 +1,5 @@
 from pathlib import Path
+from runpy import run_path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -31,6 +32,8 @@ def test_algorithms_execute_offline(example, expected, tmp_path, offline):
     assert (Path(result["artifacts"]) / "receipt.json").exists()
     assert Path(result["report_path"]).exists()
     assert result['report_filename'] == f"{result['run_id']}-{example}-circuit.html"
+    rebuilt = run_path(result['qiskit_path'])['circuit']
+    assert rebuilt == quantum.example_circuit(example)
     assert not offline.called
 
 
@@ -91,7 +94,16 @@ def test_qpu_transpiles_submits_once_and_saves_receipt(monkeypatch, tmp_path):
     job = Mock()
     job.job_id.return_value = "real-accepted-job-id"
     sampler = Mock()
-    sampler.run.return_value = job
+
+    def submit(circuits, *, shots):
+        directory = next(tmp_path.iterdir())
+        assert (directory / 'circuit.py').is_file()
+        assert run_path(str(directory / 'circuit.py'))['circuit'] == quantum.example_circuit('bell')
+        assert (directory / 'isa-circuit.qasm').read_text() == qasm3.dumps(circuits[0])
+        assert shots == args.shots
+        return job
+
+    sampler.run.side_effect = submit
     constructor = Mock(return_value=sampler)
     monkeypatch.setattr(quantum, "SamplerV2", constructor)
     args = quantum.parser().parse_args(["execute", "--example", "bell", "--hardware", "--output-dir", str(tmp_path)])
@@ -161,6 +173,7 @@ def test_qaoa_reuses_original_engine_offline(tmp_path, offline):
     assert Path(response["report_path"]).exists()
     circuit = qasm3.loads(Path(response["qasm_path"]).read_text())
     assert circuit.num_qubits == 5
+    assert run_path(response['qiskit_path'])['circuit'] == circuit
     assert not offline.called
 
 

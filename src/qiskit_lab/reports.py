@@ -45,6 +45,22 @@ def _display(value):
     return str(value)
 
 
+def _code_source(title, content, identifier, description):
+    """Use native disclosure controls so source previews also work offline without JS."""
+    lines = content.splitlines()
+    label = escape(title)
+    code = f'<pre class="source-code" aria-label="{label}"><code>{escape(content)}</code></pre>'
+    if len(lines) > 15:
+        preview = escape('\n'.join(lines[:15]))
+        code = f'''<div class="code-viewer"><details class="code-toggle">
+        <summary class="cds--btn cds--btn--tertiary cds--btn--sm">
+        <span class="expand-code">Expand all {len(lines)} lines</span>
+        <span class="collapse-code">Show first 15 lines</span><span class="sr-only"> of {label}</span></summary>
+        {code}</details><pre class="code-preview" aria-label="{label}, first 15 lines"><code>{preview}</code></pre></div>'''
+    return (f'<section class="code-source" id="{identifier}"><h3>{label}</h3>'
+            f'<p class="muted">{escape(description)}</p>{code}</section>')
+
+
 def _details(data, labels):
     return '<dl class="facts">' + "".join(
         f'<div><dt>{escape(label)}</dt><dd>{escape(_display(data[key]))}</dd></div>'
@@ -149,21 +165,32 @@ def write_report(data, directory):
     status = data["status"]
     generated = datetime.now(UTC).isoformat()
     downloads = _download("Download result JSON", f"{path.stem}-results.json", _json(data))
-    circuit = ""
-    for filename in ("circuit.qasm", "isa-circuit.qasm", "optimized.qasm"):
+    source_sections = []
+    recorded_sources = set()
+    for filename, label, description in (
+        ("circuit.py", "Qiskit Python script",
+         "Generated script that rebuilds the recorded circuit using Qiskit. It does not submit a job; "
+         "it is not the original author's Python source."),
+        ("circuit.qasm", "OpenQASM source", "Recorded circuit before hardware transpilation or local execution."),
+        ("optimized.qasm", "Optimized OpenQASM source", "Optimized QAOA circuit used for local sampling."),
+        ("isa-circuit.qasm", "Transpiled OpenQASM for hardware",
+         "Backend ISA circuit saved before submission to IBM Quantum."),
+    ):
         source = directory / filename
         if source.is_file() and not source.is_symlink():
             content = source.read_text(encoding="utf-8")
             downloads += _download("Download " + filename, filename, content, "text/plain")
-            if filename != "isa-circuit.qasm":
-                circuit = content
+            source_sections.append(_code_source(label, content, filename.replace('.', '-'), description))
+            recorded_sources.add(filename)
     circuit_text_path = directory / "circuit.txt"
     circuit_text = (circuit_text_path.read_text(encoding="utf-8")
                     if circuit_text_path.is_file() and not circuit_text_path.is_symlink() else "")
     circuit_section = '<p class="muted">The source circuit is unavailable for this job. No circuit was reconstructed.</p>'
-    if circuit or circuit_text:
+    if source_sections or circuit_text:
         circuit_section = (f'<pre class="circuit" aria-label="Quantum circuit">{escape(circuit_text)}</pre>' if circuit_text else "")
-        circuit_section += f'<details><summary>OpenQASM source</summary><pre>{escape(circuit)}</pre></details>'
+        circuit_section += ''.join(source_sections)
+        if "circuit.py" not in recorded_sources:
+            circuit_section += '<p class="muted">A Qiskit Python script was not recorded for this job.</p>'
     dashboard = ""
     # Only known images in this run directory can be embedded.
     for filename in ("results.png", "qaoa.png"):

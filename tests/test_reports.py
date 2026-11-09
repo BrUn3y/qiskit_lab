@@ -1,5 +1,7 @@
 """Reporting contracts: offline delivery, safe markup, and durable job tracking."""
 import json
+import re
+from html import escape, unescape
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -36,6 +38,39 @@ def test_reports_require_a_terminal_status(tmp_path):
     with pytest.raises(ValueError, match='terminal'):
         write_report({"status": "RUNNING"}, tmp_path)
     assert not list(tmp_path.glob('*.html'))
+
+
+def test_code_sources_preview_15_lines_and_preserve_full_downloads(tmp_path):
+    sources = {
+        'circuit.py': '\n'.join(f'# Python line {i}: <unsafe> & "quoted"' for i in range(1, 24)),
+        'circuit.qasm': '\n'.join(f'// OpenQASM line {i}' for i in range(1, 19)),
+        'isa-circuit.qasm': '\n'.join(f'// Hardware ISA line {i}' for i in range(1, 41)),
+    }
+    for filename, source in sources.items():
+        (tmp_path / filename).write_text(source)
+    html = write_report({'status': 'DONE'}, tmp_path).read_text()
+    previews = re.findall(r'<pre class="code-preview"[^>]*><code>(.*?)</code></pre>', html, re.S)
+    full = re.findall(r'<pre class="source-code"[^>]*><code>(.*?)</code></pre>', html, re.S)
+    assert [unescape(text) for text in previews] == ['\n'.join(text.splitlines()[:15]) for text in sources.values()]
+    assert [unescape(text) for text in full] == list(sources.values())
+    assert html.count('<details class="code-toggle">') == 3
+    assert '<details class="code-toggle" open' not in html
+    assert html.count('Show first 15 lines') == 3
+    assert 'Expand all 40 lines' in html
+    assert escape(sources['circuit.py']) in html
+    for filename in sources:
+        assert f'Download {filename}' in html
+    assert 'Backend ISA circuit saved before submission' in html
+
+
+@pytest.mark.parametrize('line_count', [1, 15, 16])
+def test_code_disclosure_is_only_needed_above_15_lines(tmp_path, line_count):
+    source = '\n'.join(f'// line {i}' for i in range(line_count)) + '\n'
+    (tmp_path / 'optimized.qasm').write_text(source)
+    html = write_report({'status': 'DONE'}, tmp_path).read_text()
+    assert ('<details class="code-toggle">' in html) == (line_count > 15)
+    assert f'<code>{escape(source)}</code>' in html
+    assert 'A Qiskit Python script was not recorded for this job.' in html
 
 
 def fake_job(monkeypatch, status="DONE"):

@@ -173,8 +173,15 @@ theme and bundled IBM Plex fonts. They are self-contained and open offline.
 Reports include the recorded job/run ID, backend, status, requested and observed
 shots, source/ISA circuit statistics, available timestamps and IBM QPU usage,
 SDK versions, measurement charts with probability/count controls, searchable and
-paginated state tables, downloadable JSON/OpenQASM, source circuit, and the
-scientific dashboard. QAOA reports also include the optimization trace and exact
+paginated state tables, downloadable JSON/OpenQASM/Python, source circuit, and the
+scientific dashboard. Circuit execution saves a generated Qiskit Python reconstruction
+script alongside the OpenQASM before simulation or hardware submission; QAOA
+reports also include a reconstruction script. Reports show the first 15 lines
+of each source, with an expand/collapse button for longer files. Hardware reports
+also show the transpiled OpenQASM saved before submission. The Python script
+rebuilds the recorded circuit without submitting a job; it is not the original
+author's source. Older jobs without a saved script say it is unavailable.
+QAOA reports also include the optimization trace and exact
 classical comparison. Missing IBM metadata is marked unavailable.
 
 For IBM hardware, submission still returns immediately. The native kit declares

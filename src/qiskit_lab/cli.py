@@ -72,6 +72,26 @@ def circuit_info(circuit):
             "gate_counts": dict(circuit.count_ops())}
 
 
+def save_qiskit_script(directory, source):
+    """Record a standalone reconstruction script without any submission code."""
+    script = (
+        '"""Generated Qiskit script for the recorded circuit.\n\n'
+        'Rebuilds the circuit from OpenQASM 3 without submitting a job.\n'
+        'This is a generated reconstruction, not the original author\'s Python source.\n'
+        '"""\n'
+        'from qiskit import qasm3\n\n'
+        'OPENQASM_SOURCE = (\n'
+        + ''.join(f'    {line!r}\n' for line in source.splitlines(keepends=True))
+        + ')\n\n'
+        'circuit = qasm3.loads(OPENQASM_SOURCE)\n\n'
+        'if __name__ == "__main__":\n'
+        '    print(circuit.draw(output="text"))\n'
+    )
+    path = directory / "circuit.py"
+    path.write_text(script, encoding="utf-8")
+    return str(path)
+
+
 def sdk_versions():
     return {package: importlib.metadata.version(package) for package in ("qiskit", "qiskit-ibm-runtime")}
 
@@ -158,10 +178,13 @@ def execute(args):
     if not args.hardware and circuit.num_qubits > 20:
         raise UserError("Local statevector simulation is limited to 20 qubits.")
     directory = artifact_dir(args.output_dir)
-    (directory / "circuit.qasm").write_text(qasm3.dumps(circuit))
+    source = qasm3.dumps(circuit)
+    (directory / "circuit.qasm").write_text(source, encoding="utf-8")
+    qiskit_path = save_qiskit_script(directory, source)
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
     receipt = {"run_id": directory.name, "created_at": now(), "shots": args.shots,
-               "qubits": circuit.num_qubits, "hardware": args.hardware, "artifacts": str(directory)}
+               "qubits": circuit.num_qubits, "hardware": args.hardware, "artifacts": str(directory),
+               "qiskit_path": qiskit_path}
     title = getattr(args, "title", None) or (
         args.example.replace("-", " ").title() + " circuit" if args.example
         else args.qasm.stem.replace("_", " ").replace("-", " ") + " circuit")
@@ -251,10 +274,11 @@ def qaoa(args):
     finally:
         result.dashboard_path.unlink(missing_ok=True)
     (directory / "optimized.qasm").write_text(result.qasm)
+    qiskit_path = save_qiskit_script(directory, result.qasm)
     response = asdict(result)
     response.pop("qasm")
     response.update(hardware=False, created_at=started_at, dashboard_path=str(directory / "qaoa.png"),
-                    qasm_path=str(directory / "optimized.qasm"), artifacts=str(directory))
+                    qasm_path=str(directory / "optimized.qasm"), qiskit_path=qiskit_path, artifacts=str(directory))
     circuit = qasm3.loads(result.qasm)
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
     response.update(circuit_info(circuit), status="DONE", shots=args.shots, seed=42,
