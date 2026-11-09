@@ -24,11 +24,26 @@ build-backend = "hatchling.build"
 packages = ["src/qiskit_lab"]
 
 [dependency-groups]
-dev = ["pytest>=8,<10", "jsonschema>=4,<5", "pyyaml>=6,<7", "ruff>=0.14,<1"]
+dev = [
+    "pytest>=8,<10",
+    "pytest-cov>=7,<8",
+    "pytest-timeout>=2.4,<3",
+    "jsonschema>=4,<5",
+    "pyyaml>=6,<7",
+    "ruff>=0.14,<1",
+]
 typing = ["mypy>=1.19,<2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+timeout = 60
+
+[tool.coverage.run]
+source = ["qiskit_lab"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 line-length = 120
