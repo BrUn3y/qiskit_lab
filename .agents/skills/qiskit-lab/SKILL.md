@@ -41,6 +41,10 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
 7. **Compare distributions:** `scripts/dam/quantum compare --left LOCAL_RECEIPT.json
    --right HARDWARE_JOB.json` normalizes different shot counts and reports total
    variation distance. Both files must describe the same measured circuit/register order.
+   New receipts record source-circuit identity and measurement layout; the CLI
+   rejects mismatches. Legacy count-only files require `--allow-unverified` and
+   return a warning with `compatibility.verified: false`. This flag never bypasses
+   a known mismatch or invalid counts.
 
 ## IBM setup
 

@@ -26,6 +26,7 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
 
+from qiskit_lab.comparison import ComparisonError, compare_receipts, comparison_metadata
 from qiskit_lab.reports import write_report
 
 ROOT = Path.cwd()
@@ -188,7 +189,8 @@ def execute(args):
     title = getattr(args, "title", None) or (
         args.example.replace("-", " ").title() + " circuit" if args.example
         else args.qasm.stem.replace("_", " ").replace("-", " ") + " circuit")
-    receipt.update(circuit_info(circuit), versions=sdk_versions(), title=title)
+    receipt.update(circuit_info(circuit), versions=sdk_versions(), title=title,
+                   comparison_metadata=comparison_metadata(circuit))
     if args.hardware:
         service = runtime_service()
         backend = (service.backend(args.backend) if args.backend else
@@ -282,6 +284,7 @@ def qaoa(args):
     circuit = qasm3.loads(result.qasm)
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
     response.update(circuit_info(circuit), status="DONE", shots=args.shots, seed=42,
+                    comparison_metadata=comparison_metadata(circuit),
                     title="QAOA Max-Cut experiment", backend="local_statevector_simulator", versions=sdk_versions(),
                     run_id=directory.name, completed_at=now(), duration_seconds=round(time.monotonic() - started, 6))
     return finish_report(response, directory, "experiment.json")
@@ -355,25 +358,10 @@ def inspect_backend(args):
 
 
 def compare(args):
-    def read_counts(path):
-        data = json.loads(Path(path).read_text())
-        counts = data.get("counts")
-        if isinstance(counts, list) and len(counts) == 1:
-            counts = counts[0]
-        if not isinstance(counts, dict) or not counts or sum(counts.values()) <= 0:
-            raise UserError("Each file must contain positive counts from one circuit.")
-        if any(not isinstance(value, int) or value < 0 for value in counts.values()):
-            raise UserError("Counts must be non-negative integers.")
-        return counts
-
-    left, right = read_counts(args.left), read_counts(args.right)
-    left_total, right_total = sum(left.values()), sum(right.values())
-    states = sorted(left.keys() | right.keys())
-    response = {"left_shots": left_total, "right_shots": right_total,
-                "total_variation_distance": sum(abs(left.get(s, 0) / left_total - right.get(s, 0) / right_total)
-                                                for s in states) / 2,
-                "probabilities": {s: {"left": left.get(s, 0) / left_total, "right": right.get(s, 0) / right_total}
-                                  for s in states}}
+    try:
+        response = compare_receipts(args.left, args.right, allow_unverified=args.allow_unverified)
+    except ComparisonError as error:
+        raise UserError(str(error)) from error
     if args.output:
         save_json(args.output, response)
     return response
@@ -428,6 +416,8 @@ def parser():
     comparison.add_argument("--left", type=Path, required=True)
     comparison.add_argument("--right", type=Path, required=True)
     comparison.add_argument("--output", type=Path)
+    comparison.add_argument("--allow-unverified", action="store_true",
+                            help="Allow legacy receipts without circuit/measurement metadata; report a warning")
     return cli
 
 

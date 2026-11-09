@@ -28,6 +28,7 @@ def test_algorithms_execute_offline(example, expected, tmp_path, offline):
     assert set(result["counts"]) == expected
     assert sum(result["counts"].values()) == 256
     assert result["hardware"] is False
+    assert result["comparison_metadata"] == quantum.comparison_metadata(quantum.example_circuit(example))
     assert "job_id" not in result
     assert (Path(result["artifacts"]) / "receipt.json").exists()
     assert Path(result["report_path"]).exists()
@@ -110,6 +111,7 @@ def test_qpu_transpiles_submits_once_and_saves_receipt(monkeypatch, tmp_path):
     result = quantum.execute(args)
     assert result["job_id"] == "real-accepted-job-id"
     assert result["status"] == "SUBMITTED"
+    assert result["comparison_metadata"] == quantum.comparison_metadata(quantum.example_circuit("bell"))
     assert "counts" not in result
     sampler.run.assert_called_once()
     job.result.assert_not_called()
@@ -167,12 +169,14 @@ def test_qaoa_reuses_original_engine_offline(tmp_path, offline):
     response = quantum.qaoa(args)
     assert response["exact_cut"] == 4
     assert response["approximation_ratio"] > .9
+    assert response["best_bitstring"] in response["counts"]
     assert sum(response["counts"].values()) == 256
     assert Path(response["dashboard_path"]).exists()
     assert Path(response["qasm_path"]).exists()
     assert Path(response["report_path"]).exists()
     circuit = qasm3.loads(Path(response["qasm_path"]).read_text())
     assert circuit.num_qubits == 5
+    assert response["comparison_metadata"] == quantum.comparison_metadata(circuit)
     assert run_path(response['qiskit_path'])['circuit'] == circuit
     assert not offline.called
 
@@ -187,13 +191,15 @@ def test_qiskit_engine_imports_as_an_installed_package(tmp_path):
 
 def test_comparison_normalizes_different_shot_totals(tmp_path):
     left, right = tmp_path / "left.json", tmp_path / "right.json"
-    quantum.save_json(left, {"counts": {"00": 50, "11": 50}})
-    quantum.save_json(right, {"counts": [{"00": 150, "11": 50}]})
+    metadata = quantum.comparison_metadata(quantum.example_circuit("bell"))
+    quantum.save_json(left, {"counts": {"00": 50, "11": 50}, "comparison_metadata": metadata})
+    quantum.save_json(right, {"counts": [{"00": 150, "11": 50}], "comparison_metadata": metadata})
     args = quantum.parser().parse_args(["compare", "--left", str(left), "--right", str(right)])
     result = quantum.compare(args)
     assert result["left_shots"] == 100
     assert result["right_shots"] == 200
     assert result["total_variation_distance"] == .25
+    assert result["compatibility"]["verified"]
 
 
 def test_first_chat_requests_setup_without_reading_credentials(monkeypatch, tmp_path, offline):

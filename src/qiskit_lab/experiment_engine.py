@@ -156,7 +156,7 @@ def _render_dashboard(
         bit = (int(best_bitstring, 2) >> node) & 1
         graph_ax.scatter(x, y, s=1150, color="#33b1ff" if bit == 0 else "#be95ff", edgecolors="#f4f4f4", linewidth=1.5, zorder=2)
         graph_ax.text(x, y, str(node), color="#161616", ha="center", va="center", fontsize=13, weight="bold", zorder=3)
-    graph_ax.set_title(f"Best partition  {best_bitstring}  •  cut {cut_value(int(best_bitstring, 2), edges)}", color="#f4f4f4", loc="left", pad=16)
+    graph_ax.set_title(f"Best sampled partition  {best_bitstring}  •  cut {cut_value(int(best_bitstring, 2), edges)}", color="#f4f4f4", loc="left", pad=16)
     graph_ax.set_facecolor("#161616")
     graph_ax.set_aspect("equal")
     graph_ax.axis("off")
@@ -189,6 +189,8 @@ def _render_dashboard(
 
 def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAExperimentResult:
     """Optimize a p=1 QAOA Max-Cut circuit and validate it exactly."""
+    if shots < 1:
+        raise ValueError("QAOA requires at least one shot.")
     node_count, edges = parse_maxcut_graph(request)
     best_expectation = -1.0
     best_gamma = 0.0
@@ -214,12 +216,12 @@ def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAE
         for index, count in enumerate(sampled)
         if count
     }
-    best_index = max(
-        range(2**node_count),
-        key=lambda index: (cut_value(index, edges), counts.get(format(index, f"0{node_count}b"), 0)),
+    # Rank observed solutions by cut, then frequency, then smallest bitstring.
+    best_bitstring = max(
+        counts,
+        key=lambda state: (cut_value(int(state, 2), edges), counts[state], -int(state, 2)),
     )
-    best_bitstring = format(best_index, f"0{node_count}b")
-    best_cut = cut_value(best_index, edges)
+    best_cut = cut_value(int(best_bitstring, 2), edges)
     exact_cut, _ = _exact_solution(node_count, edges)
     ratio = best_expectation / exact_cut if exact_cut else 1.0
     measured_circuit = _qaoa_circuit(node_count, edges, best_gamma, best_beta, measurements=True)

@@ -250,6 +250,31 @@ scripts/dam/quantum compare --left LOCAL_RECEIPT.json --right artifacts/dam/job.
 
 Grover uses two qubits and marked state `11`; Deutsch–Jozsa uses a balanced oracle. The model can develop other circuits and export them to QASM. The local simulator supports up to 20 qubits. Joint counts preserve correlations between registers. Compare distributions for the same circuit and register order. Artifacts are saved in `artifacts/dam/<run>/`.
 
+QAOA's `best_bitstring` and `best_cut` describe the best **observed sample**,
+ranked by cut value, then sample frequency, then the smallest bitstring for a
+deterministic tie. `exact_cut` remains the separately computed classical optimum;
+`expected_cut` and `approximation_ratio` describe the optimized statevector
+expectation, which can differ from the best finite-shot observation.
+
+New execution and QAOA receipts include versioned `comparison_metadata`: a
+SHA-256 identity of the logical source circuit and its classical registers and
+measurement mapping. Hardware receipts preserve this metadata from before ISA
+transpilation. `compare` validates binary count keys, bit widths, circuit identity
+and measurement order before computing total variation distance. Different shot
+totals are supported. Source identity uses normalized OpenQASM 3; it does not
+prove equivalence between differently expressed circuits.
+
+Older receipts or externally supplied counts lack this provenance and require an
+explicit opt-in:
+
+```sh
+scripts/dam/quantum compare --left OLD_LOCAL.json --right OLD_HARDWARE.json --allow-unverified
+```
+
+Such comparisons return `compatibility.verified: false` and a warning. The flag
+does not bypass invalid counts, differing bit widths or known metadata mismatches.
+Normal comparisons return `compatibility.verified: true`.
+
 ```sh
 uv sync --locked
 uv run --locked pytest -q

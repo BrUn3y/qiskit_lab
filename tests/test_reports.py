@@ -98,6 +98,10 @@ def tracked_receipt(tmp_path):
 def test_completed_hardware_retains_receipt_and_renders_report(monkeypatch, tmp_path):
     job = fake_job(monkeypatch)
     directory = tracked_receipt(tmp_path)
+    receipt = json.loads((directory / 'receipt.json').read_text())
+    metadata = cli.comparison_metadata(cli.example_circuit('bell'))
+    receipt['comparison_metadata'] = metadata
+    cli.save_json(directory / 'receipt.json', receipt)
     args = cli.parser().parse_args(['job', 'tracked-job', '--output-dir', str(tmp_path)])
     result = cli.inspect_job(args)
     assert Path(result['report_path']) == directory / 'tracked-job-bell-circuit.html'
@@ -105,6 +109,7 @@ def test_completed_hardware_retains_receipt_and_renders_report(monkeypatch, tmp_
     assert result['report_title'] == 'Bell circuit'
     assert result['shots'] == 64
     assert result['qubits'] == 2
+    assert result['comparison_metadata'] == metadata
     assert result['completed_at'] == '2026-11-04T00:01:00Z'
     assert result['metrics']['usage'] == {'quantum_seconds': 1.25}
     html = Path(result['report_path']).read_text()

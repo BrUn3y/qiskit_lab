@@ -133,7 +133,7 @@ def _optimization(data):
     {_details(data, [('node_count', 'Graph nodes'), ('edges', 'Graph edges'), ('gamma', 'Optimized gamma'),
                     ('beta', 'Optimized beta'), ('expected_cut', 'Statevector expected cut'),
                     ('exact_cut', 'Exact classical optimum'), ('approximation_ratio', 'Expectation / exact optimum'),
-                    ('best_bitstring', 'Best solution'), ('best_cut', 'Best cut')])}</section>'''
+                    ('best_bitstring', 'Best sampled solution'), ('best_cut', 'Best sampled cut')])}</section>'''
 
 
 def report_filename(data, directory):
