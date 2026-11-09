@@ -37,3 +37,17 @@ def test_best_solution_is_sampled_and_ranked_by_cut_then_frequency(observed, exp
 def test_qaoa_requires_an_observed_sample(shots):
     with pytest.raises(ValueError, match="at least one shot"):
         engine.run_maxcut_qaoa("5 nodes", shots=shots)
+
+
+@pytest.mark.parametrize("description,expected", [
+    ("4-node (3,0) (0,3) (2,1) (1,1)", (4, ((0, 3), (1, 2)))),
+    ("2-node", (2, ((0, 1),))),
+    ("3-node", (3, ((0, 1), (1, 2), (2, 0)))),
+])
+def test_graph_edges_remain_normalized_deduplicated_and_deterministic(description, expected):
+    assert engine.parse_maxcut_graph(description) == expected
+
+
+def test_graph_edges_outside_the_declared_nodes_are_rejected():
+    with pytest.raises(ValueError, match="between 0 and 3"):
+        engine.parse_maxcut_graph("4-node (0,4)")

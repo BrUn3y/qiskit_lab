@@ -83,10 +83,10 @@ def render_execution_dashboard(
     figure.text(0.047, 0.825, f"Job {job_id}", color="#a8a8a8", fontsize=10)
 
     cards = (("SHOTS", f"{total:,}"), ("OUTCOMES", str(len(counts))), ("QUBITS", str(circuit.num_qubits)), ("GATES", str(len(circuit.data))))
-    for index, (label, value) in enumerate(cards):
+    for index, (label, card_value) in enumerate(cards):
         x = 0.44 + index * 0.135
         figure.text(x, 0.905, label, color="#8d8d8d", fontsize=8, weight="bold")
-        figure.text(x, 0.855, value, color="#f4f4f4", fontsize=19)
+        figure.text(x, 0.855, card_value, color="#f4f4f4", fontsize=19)
 
     histogram.set_facecolor("#161616")
     bars = histogram.bar(states, values, color="#33b1ff", width=0.55)
@@ -97,13 +97,13 @@ def render_execution_dashboard(
     histogram.set_axisbelow(True)
     for spine in histogram.spines.values():
         spine.set_color("#525252")
-    for bar, value in zip(bars, values):
+    for bar, value in zip(bars, values, strict=True):
         histogram.text(bar.get_x() + bar.get_width() / 2, value, f"{value:,}\n{value / total:.1%}", color="#f4f4f4", ha="center", va="bottom", fontsize=8)
 
     figure.text(0.047, 0.40, "CIRCUIT", color="#8d8d8d", fontsize=9, weight="bold")
     figure.text(0.047, 0.375, "Diagram", color="#f4f4f4", fontsize=10, weight="bold")
     figure.add_artist(plt.Line2D([0.047, 0.103], [0.367, 0.367], color="#33b1ff", linewidth=2))
-    for circuit_ax, chunk in zip(circuit_axes, operation_chunks):
+    for circuit_ax, chunk in zip(circuit_axes, operation_chunks, strict=True):
         _draw_circuit(circuit_ax, circuit, chunk)
     if len(operations) > 36:
         figure.text(0.975, 0.04, f"+{len(operations) - 36} operations not shown", color="#8d8d8d", fontsize=8, ha="right")

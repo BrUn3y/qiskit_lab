@@ -1,5 +1,7 @@
 # ⚛️ Qiskit Lab — DAM starter kit
 
+[![DAM starter kit CI](https://github.com/BrUn3y/qiskit_lab/actions/workflows/dam.yml/badge.svg?branch=main)](https://github.com/BrUn3y/qiskit_lab/actions/workflows/dam.yml)
+
 A quantum computing workspace in [DAM](https://dam.res.ibm.com/), connected to **IBM Quantum Platform** through Qiskit Runtime and `SamplerV2`.
 
 Qiskit Lab is a native Python package using the Qiskit SDK for circuit development, simulation, experiments, and hardware execution. DAM supplies the chat model and workspace. The application code lives in `src/qiskit_lab` and calls Qiskit directly.
@@ -24,6 +26,34 @@ flowchart LR
 | Results | Automatic Carbon HTML reports, job IDs, joint counts, JSON receipts, QASM, circuit diagrams and distribution comparisons |
 
 Both **`qiskit` and `qiskit-ibm-runtime` are required dependencies** and must be installed before using the tools. QAOA remains experimental; this kit does not implement a general VQE optimizer. Code, documentation and agent responses use English.
+
+## Quick start: local simulation
+
+Requirements: Git, Python **3.11-3.13**, and [uv](https://docs.astral.sh/uv/).
+Run these commands in a terminal. No DAM account, IBM credentials, Node.js, or
+QPU access is needed for local simulation. The first sync needs network access
+to download the locked dependencies; simulation then runs locally.
+
+```sh
+git clone https://github.com/BrUn3y/qiskit_lab.git
+cd qiskit_lab
+uv sync --locked
+uv run --locked qiskit-lab doctor
+uv run --locked qiskit-lab execute --example bell --shots 256
+```
+
+`doctor` reports installed SDK versions without contacting IBM unless you add
+`--online`. The execution command prints JSON with `hardware: false`,
+`backend: "local_statevector_simulator"`, `status: "DONE"`, and 256 total counts
+over Bell states `00` and `11`. Do not expect an exact 50/50 split at finite shots.
+It saves a receipt, QASM, reconstructed Python, PNG, and self-contained HTML under
+`artifacts/dam/<run-id>/`. Open the returned `report_path` in a browser. The CLI
+does not start a web server or publish a DAM artifact by itself.
+
+Use `uv run --locked qiskit-lab --help` for commands and
+`uv run --locked qiskit-lab execute --help` for execution options. The
+`scripts/dam/quantum` wrapper runs the same CLI from the checkout. For development
+and the full offline validation workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Qiskit Lab in DAM
 
@@ -227,28 +257,37 @@ npm run build
 Third-party licenses and exact asset versions are documented in
 `src/qiskit_lab/assets/NOTICE.md`.
 
-## Tools and local development
+## Local examples
+
+From the repository root, after `uv sync --locked`:
 
 ```sh
-uv sync --locked
-uv run --locked qiskit-lab --help
-bash scripts/dam/setup.sh
-scripts/dam/quantum onboarding
-scripts/dam/quantum doctor --online
-scripts/dam/quantum backends
-scripts/dam/quantum backend ibm_BACKEND --dashboard
-scripts/dam/quantum execute --example bell --shots 1024
 scripts/dam/quantum execute --example ghz --qubits 5
 scripts/dam/quantum execute --example grover
 scripts/dam/quantum execute --example deutsch-jozsa --qubits 3
-scripts/dam/quantum execute --qasm circuit.qasm
-scripts/dam/quantum execute --qasm circuit.qasm --hardware --shots 1024
-scripts/dam/quantum job JOB_ID --output artifacts/dam/job.json
 scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'
-scripts/dam/quantum compare --left LOCAL_RECEIPT.json --right artifacts/dam/job.json
 ```
 
-Grover uses two qubits and marked state `11`; Deutsch–Jozsa uses a balanced oracle. The model can develop other circuits and export them to QASM. The local simulator supports up to 20 qubits. Joint counts preserve correlations between registers. Compare distributions for the same circuit and register order. Artifacts are saved in `artifacts/dam/<run>/`.
+Grover uses two qubits and marked state `11`; Deutsch–Jozsa uses a balanced oracle. The model can develop other circuits and export them to QASM. The local simulator supports up to 20 qubits; memory grows exponentially, so this limit is not a resource guarantee. Joint counts preserve correlations between registers. Compare distributions for the same circuit and register order. Artifacts are saved in `artifacts/dam/<run>/`.
+
+### OpenQASM and receipt comparison
+
+The checked-in [Bell circuit](docs/examples/bell.qasm) can be used directly.
+This complete example compares two **local** runs of the same source with
+different shot totals; it does not demonstrate IBM connectivity:
+
+```sh
+mkdir -p artifacts/dam
+uv run --locked qiskit-lab execute --qasm docs/examples/bell.qasm --shots 256 > artifacts/dam/local-256.json
+uv run --locked qiskit-lab execute --qasm docs/examples/bell.qasm --shots 1024 > artifacts/dam/local-1024.json
+uv run --locked qiskit-lab compare --left artifacts/dam/local-256.json --right artifacts/dam/local-1024.json
+```
+
+The saved stdout files contain the same receipts returned by the CLI. A
+successful comparison reports `compatibility.verified: true`, shot totals 256
+and 1024, and total variation distance between the sampled distributions.
+It is not a test of quantum-state equivalence. These commands overwrite the two
+named JSON files on repeat runs; the per-run artifact directories are preserved.
 
 QAOA's `best_bitstring` and `best_cut` describe the best **observed sample**,
 ranked by cut value, then sample frequency, then the smallest bitstring for a
@@ -275,14 +314,29 @@ Such comparisons return `compatibility.verified: false` and a warning. The flag
 does not bypass invalid counts, differing bit widths or known metadata mismatches.
 Normal comparisons return `compatibility.verified: true`.
 
+### IBM-only commands
+
+The following commands contact IBM and require the account configuration above.
+Replace `ibm_BACKEND` and `JOB_ID` with actual values. Do not include them in an
+offline smoke test:
+
 ```sh
-uv sync --locked
-uv run --locked pytest -q
-uv run --locked ruff check src tests scripts/dam
-uv build
+scripts/dam/quantum doctor --online
+scripts/dam/quantum backends
+scripts/dam/quantum backend ibm_BACKEND --dashboard
+scripts/dam/quantum job JOB_ID --output artifacts/dam/job.json
 ```
 
-CI runs these checks on Linux: algorithms, QASM, joint correlations, QAOA, single-submission QPU contracts, job receipts, safe errors, and first-chat setup behavior. Mock tests do not establish a real IBM connection; use `doctor --online` for that.
+**Only when you deliberately authorize one potentially billable QPU job:**
+
+```sh
+scripts/dam/quantum execute --qasm docs/examples/bell.qasm --hardware --shots 1024
+```
+
+A named backend also requires `--hardware`. Never automatically retry a
+submission after an uncertain response. See the job-retrieval and report
+instructions above. Offline tests use mocks for hardware contracts; passing CI
+does not establish real IBM connectivity or execute a QPU job.
 
 ## Update an existing deployment
 
@@ -318,11 +372,32 @@ References: [official starter kits](https://github.com/dam-agents/dam-starter-ki
 
 ## Python package and container
 
-You can also install the package with `python -m pip install .`; this installs the required SDK dependencies and exposes `qiskit-lab`. Run `qiskit-lab doctor` to inspect the installed SDK versions, or `python -m qiskit_lab --help`.
+Inside a Python 3.11-3.13 virtual environment, you can also install the package
+with `python -m pip install .`; this installs the required SDK dependencies and
+exposes `qiskit-lab`. Unlike `uv sync --locked`, pip resolves the dependency
+ranges in `pyproject.toml`, not `uv.lock`. Run `qiskit-lab doctor` to inspect the
+installed SDK versions, or `python -m qiskit_lab --help`.
 
 ```sh
 docker build -t qiskit-lab .
 docker run --rm qiskit-lab execute --example bell --shots 256
 ```
 
-The container installs the locked SDK environment during its build and runs the CLI as a non-root user. It does not start an HTTP server.
+The container installs the locked SDK environment during its build and runs the CLI as a non-root user. It does not start an HTTP server. With `--rm` and no mounted output directory, generated reports disappear when the container exits. To retain them on a Linux host, mount a directory writable by container UID 1000 and pass `--output-dir /results`:
+
+```sh
+mkdir -p artifacts/container
+# Ensure artifacts/container is writable by UID 1000 before running.
+docker run --rm -v "$PWD/artifacts/container:/results" qiskit-lab execute --example bell --shots 256 --output-dir /results
+```
+
+The JSON paths use `/results`; open the corresponding files under
+`artifacts/container/` on the host.
+
+## License status
+
+This repository currently has no project-level license file. Do not infer a
+license from the bundled third-party assets: the Carbon and IBM Plex notices
+in [assets/NOTICE.md](src/qiskit_lab/assets/NOTICE.md) cover those assets only.
+The repository owner must clarify licensing before others rely on permission
+to redistribute or reuse the project.

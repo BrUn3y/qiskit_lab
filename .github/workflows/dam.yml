@@ -10,16 +10,28 @@ jobs:
   native-dam:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked
-      - run: uv run --locked pytest -q
+      - run: uv run --locked pytest -q --cov --cov-report=term-missing --cov-report=xml:coverage.xml
+      - name: Preserve full job-tracking line and branch coverage
+        run: uv run --locked coverage report --include='*/job_tracking.py' --fail-under=100
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && hashFiles('coverage.xml') != '' }}
+        with:
+          name: coverage-python-${{ matrix.python-version }}
+          path: coverage.xml
       - run: uv run --locked ruff check src tests scripts/dam
+      - run: uv run --locked --group typing mypy
       - run: uv run --locked qiskit-lab doctor
       - run: uv build
       - run: bash -n scripts/dam/install.sh scripts/dam/setup.sh scripts/dam/quantum

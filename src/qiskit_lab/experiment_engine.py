@@ -49,7 +49,7 @@ def parse_maxcut_graph(request: str) -> tuple[int, tuple[tuple[int, int], ...]]:
         raise ValueError("The development QAOA engine supports graphs from 2 to 8 nodes.")
 
     parsed_edges = {
-        tuple(sorted((int(left), int(right))))
+        (min(int(left), int(right)), max(int(left), int(right)))
         for left, right in _EDGE_PATTERN.findall(request)
         if int(left) != int(right)
     }

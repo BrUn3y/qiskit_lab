@@ -24,14 +24,49 @@ build-backend = "hatchling.build"
 packages = ["src/qiskit_lab"]
 
 [dependency-groups]
-dev = ["pytest>=8,<10", "jsonschema>=4,<5", "pyyaml>=6,<7", "ruff>=0.14,<1"]
+dev = [
+    "pytest>=8,<10",
+    "pytest-cov>=7,<8",
+    "pytest-timeout>=2.4,<3",
+    "jsonschema>=4,<5",
+    "pyyaml>=6,<7",
+    "ruff>=0.14,<1",
+]
+typing = ["mypy>=1.19,<2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+timeout = 60
+
+[tool.coverage.run]
+source = ["qiskit_lab"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I"]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "SIM", "C4", "PTH"]
+# timezone.utc is supported; an alias-only rewrite adds no safety.
+ignore = ["UP017"]
+
+[tool.mypy]
+files = ["src/qiskit_lab"]
+python_version = "3.11"
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+module = ["qiskit", "qiskit.*", "qiskit_ibm_runtime", "qiskit_ibm_runtime.*"]
+# These SDKs do not ship a py.typed marker. Keep other missing imports visible.
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "qiskit_lab.experiment_engine"
+disallow_untyped_defs = true
+warn_return_any = true
