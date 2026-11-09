@@ -37,7 +37,7 @@ def find_receipt(base, job_id):
 
 def job_metadata(job):
     """Allowlist IBM timing/usage fields; do not serialize SDK objects or options."""
-    result = {}
+    result: dict[str, object] = {}
     try:
         created = job.creation_date
         if isinstance(created, datetime):
