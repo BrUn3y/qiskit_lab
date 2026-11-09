@@ -8,8 +8,8 @@ Read [AGENTS.md](AGENTS.md) and the
 or hardware behavior. [ONBOARDING.md](ONBOARDING.md) describes owner setup inside
 DAM; it is not required for offline tests.
 
-Use Git, Python 3.11-3.13, and [uv](https://docs.astral.sh/uv/). CI currently runs
-on Ubuntu with Python 3.12; it is not a multi-OS or multi-Python test matrix.
+Use Git, Python 3.11-3.13, and [uv](https://docs.astral.sh/uv/). CI runs on Ubuntu
+with Python 3.11, 3.12, and 3.13; other operating systems are not covered.
 Create a branch from the current default branch and keep changes focused:
 
 ```sh
@@ -31,6 +31,7 @@ Run these before editing to establish a baseline, then again after changes:
 ```sh
 uv run --locked pytest -q
 uv run --locked ruff check src tests scripts/dam
+uv run --locked --group typing mypy
 uv run --locked qiskit-lab doctor
 uv build
 bash -n scripts/dam/install.sh scripts/dam/setup.sh scripts/dam/quantum
@@ -41,6 +42,7 @@ mocks for IBM services and must not require real credentials. `doctor` without
 `--online` only inspects the installed SDK. Build output goes to ignored `dist/`;
 `uv build` does not publish a package. Dependency installation and the first
 build may need network access even though the tests and simulation are offline.
+Type checking uses the development-only `typing` group, not runtime dependencies.
 
 CI also installs the native kit into an isolated instruction home and checks
 that an empty report queue skips the model. To reproduce without modifying your
