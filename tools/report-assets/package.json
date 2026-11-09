@@ -6,6 +6,6 @@
   },
   "devDependencies": {
     "@carbon/styles": "1.119.0",
-    "sass": "1.93.2"
+    "sass": "1.108.0"
   }
 }
