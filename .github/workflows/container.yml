@@ -1,0 +1,65 @@
+name: Build smoke
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  report-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Build the locked report assets without dependency install scripts
+        working-directory: tools/report-assets
+        run: |
+          node --version
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Build the locked runtime image without publishing
+        run: docker build --tag qiskit-lab:ci .
+      - name: Check the default entry point and offline diagnostics
+        run: |
+          docker run --rm --network none qiskit-lab:ci
+          docker run --rm --network none qiskit-lab:ci doctor
+      - name: Check installed package and QASM APIs without network access
+        run: |
+          docker run --rm --network none --entrypoint python qiskit-lab:ci -c '
+          import importlib.util
+          import os
+          import sys
+          from pathlib import Path
+          from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister, qasm2, qasm3
+          import qiskit_ibm_runtime
+          import qiskit_lab
+          from qiskit_lab.comparison import comparison_metadata
+
+          assert os.getuid() != 0
+          assert Path(qiskit_lab.__file__).is_relative_to(Path(sys.prefix))
+          assert importlib.util.find_spec("pytest") is None
+          assert importlib.util.find_spec("ruff") is None
+          probe = Path("writable-workspace")
+          probe.write_text("ok")
+          probe.unlink()
+          circuit = QuantumCircuit(QuantumRegister(2, "q"), ClassicalRegister(1, "a"), ClassicalRegister(1, "b"))
+          circuit.h(0)
+          circuit.cx(0, 1)
+          circuit.measure(0, 0)
+          circuit.measure(1, 1)
+          for api in (qasm2, qasm3):
+              rebuilt = api.loads(api.dumps(circuit))
+              assert rebuilt == circuit
+              assert comparison_metadata(rebuilt) == comparison_metadata(circuit)
+          print("Non-root installed runtime, writable workspace, QASM2 and QASM3: OK")
+          '
