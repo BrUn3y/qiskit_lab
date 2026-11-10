@@ -46,6 +46,37 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    return a warning with `compatibility.verified: false`. This flag never bypasses
    a known mismatch or invalid counts.
 
+## Custom CHSH experiments
+
+For local measurement configurations, use the bundled independent sampling helper:
+
+```python
+from qiskit_lab.sampling import sample_configurations
+
+# Supply the complete list once; do not restart a root seed per configuration.
+counts, sampling = sample_configurations(circuits, shots=8192, seed=42)
+```
+
+Keep `sampling` in the experiment receipt. It records the root seed and distinct
+configuration seeds derived with NumPy SeedSequence. Error bars assume independent
+shots within and across configurations and omit hardware systematic errors.
+Identical histograms are a review signal, not proof of a sampling error.
+
+Save a public JSON receipt with terminal `status`, boolean `hardware`, `backend`,
+`job_id` for hardware or `run_id` for simulation, and four `correlators` labelled
+`ab`, `ab'`, `a'b`, `a'b'`. Each row needs observed two-bit `counts` and
+`sign_in_chsh` of +1 or -1; an odd number of signs must be negative. Preserve the
+measurement angles and theoretical values when known. Use `chsh_ideal` for the
+ideal reference; hardware noise is not a calibrated depolarizing prediction.
+
+Generate the report with `scripts/dam/quantum report --input PUBLIC_RESULT.json`.
+This validates counts and recalculates statistics without contacting IBM or
+submitting a job. It preserves the input and returns new HTML/JSON artifact paths.
+Do not hand-write an alternative CHSH HTML renderer. Publish the returned HTML
+using the automatic completion-report workflow below. Importing a receipt does
+not verify that its hardware job exists; query an existing job ID separately if
+verification is requested.
+
 ## IBM setup
 
 At the start of a new chat run `scripts/dam/quantum onboarding`. Until the first
