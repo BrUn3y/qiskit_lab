@@ -23,7 +23,7 @@ flowchart LR
 | Status | Accessible QPUs, queues, status, operations and topology |
 | Computing | Local simulation; ISA transpilation and one fresh `SamplerV2` job when requested |
 | Experiment | QAOA Max-Cut p=1, 2–8 nodes, exact classical validation and PNG |
-| Results | Automatic Carbon HTML reports, job IDs, joint counts, JSON receipts, QASM, circuit diagrams and distribution comparisons |
+| Results | Automatic HTML reports, job IDs, joint counts, JSON receipts, QASM, circuit diagrams and distribution comparisons |
 
 Both **`qiskit` and `qiskit-ibm-runtime` are required dependencies** and must be installed before using the tools. QAOA remains experimental; this kit does not implement a general VQE optimizer. Code, documentation and agent responses use English.
 
@@ -57,16 +57,16 @@ and the full offline validation workflow, see [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Qiskit Lab in DAM
 
-These screenshots show a five-node QAOA Max-Cut local simulation and its Carbon
+These screenshots show a five-node QAOA Max-Cut local simulation and its
 HTML report inside DAM.
 
 **Report overview.** Completion status, downloads, shot count and circuit statistics.
 
-![Qiskit Lab in DAM showing the Carbon QAOA report overview](docs/images/dam-qaoa-report-overview.png)
+![Qiskit Lab in DAM showing the QAOA report overview](docs/images/dam-qaoa-report-overview.png)
 
 **Measurement results.** Observed bitstring probabilities and searchable results.
 
-![Carbon report showing the QAOA measurement distribution in DAM](docs/images/dam-qaoa-measurement-results.png)
+![Report showing the QAOA measurement distribution in DAM](docs/images/dam-qaoa-measurement-results.png)
 
 **Circuit and scientific dashboard.** Circuit source, graph, convergence and sampled solutions.
 
@@ -187,7 +187,7 @@ dam chat 'Qiskit Lab'
 
 Simulation is the default. When you request real hardware, the agent submits one job and returns its ID without waiting through the entire queue. Query the same ID later. The default QPU execution limit is 300 seconds per job; it does not limit cost or queue time. If a submission response is lost, inspect IBM jobs tagged `qiskit-lab-dam` before requesting another submission.
 
-## Automatic Carbon HTML job reports
+## Automatic HTML job reports
 
 Every completed simulation, QAOA experiment and terminal hardware job produces
 `<job-or-run-id>-<circuit-description>.html` alongside its JSON, QASM and PNG
@@ -197,8 +197,8 @@ includes its artifact and workspace file links. If artifact publication is
 unavailable, it explains that limitation and preserves the downloadable report.
 Use `execute --title 'My circuit'` to label a custom circuit; the default
 description comes from the example or QASM filename. `job JOB_ID --title 'My circuit'`
-can label an existing job when its circuit is known. Reports use the official **IBM Carbon Design System** Gray 100
-theme and bundled IBM Plex fonts. They are self-contained and open offline.
+can label an existing job when its circuit is known. Reports use a dark theme
+and bundled IBM Plex fonts. They are self-contained and open offline.
 
 Reports include the recorded job/run ID, backend, status, requested and observed
 shots, source/ISA circuit statistics, available timestamps and IBM QPU usage,
@@ -245,7 +245,7 @@ The default tracked directory is `artifacts/dam/`. If you use a custom hardware
 configure the schedule to match. Reports contain only explicitly recorded job
 data; account files and credentials are never embedded.
 
-Carbon CSS and fonts ship inside the Python wheel. Node.js is only needed to
+Report styles and fonts ship inside the Python wheel. Node.js is only needed to
 rebuild these checked-in frontend assets, not to run or open reports:
 
 ```sh
@@ -259,7 +259,7 @@ Third-party licenses and exact asset versions are documented in
 
 ### Regenerate a saved report offline
 
-For custom experiments, use the bundled Carbon report generator instead of
+For custom experiments, use the bundled report generator instead of
 maintaining a separate HTML template:
 
 ```sh
@@ -442,7 +442,7 @@ The JSON paths use `/results`; open the corresponding files under
 ## License status
 
 This repository currently has no project-level license file. Do not infer a
-license from the bundled third-party assets: the Carbon and IBM Plex notices
+license from the bundled third-party assets: the notices
 in [assets/NOTICE.md](src/qiskit_lab/assets/NOTICE.md) cover those assets only.
 The repository owner must clarify licensing before others rely on permission
 to redistribute or reuse the project.
