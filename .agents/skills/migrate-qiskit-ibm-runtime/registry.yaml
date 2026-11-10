@@ -1,0 +1,925 @@
+# qiskit-ibm-runtime Migration Registry
+#
+# This file is the entry point for the migrate-qiskit-ibm-runtime skill. It
+# enumerates every SUPPORTED migration CHANGE (a breaking change, or a group of
+# related ones, in qiskit-ibm-runtime) with routing metadata. It does NOT
+# contain the migration content itself — each change grounds in either a live
+# doc `url` (release notes / official migration guide) or a hand-curated LOCAL
+# `guide` in this skill folder. Never treat this file's `note` or `detect_*`
+# fields as a substitute for reading the actual guide.
+#
+# WHY THIS SKILL IS NOT "PRIMITIVES ONLY":
+#   Primitives are the primary interface, so primitive changes are the bulk of
+#   any real migration — but qiskit-ibm-runtime has broken plenty of NON-primitive
+#   surface too (the `ibm_quantum` channel, `backend.run()`, result streaming,
+#   custom programs, ...). This skill migrates ANY version of qiskit-ibm-runtime
+#   up to the latest release, treating primitives as one DOMAIN among several.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# TWO-LAYER DESTINATION (read `target_rule` below in full):
+#   Hop A — reach the latest DOCUMENTED API. Every change whose grounding is a
+#           release-note / migration-guide `url`. These are public and dated.
+#   Hop B — adopt the CLIENT-SIDE (Executor-backed) primitives. Fully released in
+#           qiskit-ibm-runtime 0.50.0, which also DEPRECATES the server-side
+#           SamplerV2/EstimatorV2 in favor of them, AND published as its own
+#           migration guide — so hop B is now `url`-grounded like any hop-A change.
+#           The distinction between the hops is now only WHAT they migrate to, not
+#           how well documented they are.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# GROUNDING SOURCE — each change grounds in EXACTLY ONE of `url` or `guide`:
+#   The skill fetches `url` when an entry has one (WebFetch / qiskit-docs MCP);
+#   otherwise it reads the local `guide` file. Publishing a guide is therefore a
+#   one-line edit: REPLACE its `guide:` with the `url:` of the published page and
+#   delete the local file, so there is never a second copy to drift out of sync.
+#   Consequence: a `url` entry has NO local fallback. If the fetch fails, say so
+#   and make no edits for that change — do not migrate it from general knowledge.
+#
+# Fields per change:
+#   id:               change slug. Also the token a user can pass in $ARGUMENTS
+#                     to force just this change (e.g. `/migrate-qiskit-ibm-runtime v1-to-v2`).
+#   title:            display name.
+#   domain:           grouping label for the report — one of:
+#                       primitives | account-channel | execution | programs |
+#                       jobs-results | misc-deprecations
+#                     `primitives` is the bulk; the non-primitive domains are now
+#                     authored too (grounded in migrate-non-primitive-apis.md). The
+#                     `placeholder` status (see below) stays available for future
+#                     additions that are routed before their actions are written.
+#   guide:            repo-root-relative LOCAL grounding guide, for a change whose
+#                     guide is not published. Its tables/sections ARE the Phase-5
+#                     checklist when `status: active`. Mutually exclusive with
+#                     `url` — when the guide is published, swap this for that.
+#   url:              live doc URL — release notes, or an official migration guide.
+#                     When set, the skill fetches it INSTEAD of a local file and it
+#                     is the authoritative checklist. Any change may have one, hop B
+#                     included. Prefer the `.md` form of a docs URL: it serves raw
+#                     markdown, so it needs no HTML-to-text guessing.
+#   companion_guide:  (optional) a SECOND grounding guide whose changes this
+#                     change also inherits (used when a primitive change's
+#                     client-side DESTINATION is documented in the shared
+#                     server-to-client guide).
+#   companion_url:    (optional) the same thing as a published URL. `companion_url`
+#                     is to `companion_guide` what `url` is to `guide`, including
+#                     being mutually exclusive with it.
+#   status:           active | placeholder. `placeholder` = routing (detection +
+#                     version window + url pointer) is defined, but the migration
+#                     ACTIONS are not authored yet; the skill DETECTS and REPORTS
+#                     the change but MUST NOT edit code for it.
+#   code_evidence:    code | environment. `code` = every form is a literal symbol
+#                     in source, so a `detect_*` match is meaningful on its own.
+#                     `environment` = packaging/version state not visible by
+#                     grepping source (e.g. which fake-backend classes exist);
+#                     rely on the version window and say so.
+#   applies_from:     change is relevant if the source version >= this
+#                     (inclusive). null = no lower bound.
+#   applies_to:       change is relevant if the source version < this (exclusive)
+#                     — i.e. the release that REMOVED/renamed the old form, so
+#                     code older than it needs the fix. null = no upper bound.
+#   order:            reporting / apply sequence (ascending). The client-side
+#                     primitives hop is deliberately near-LAST; only changes that
+#                     REQUIRE it (the NoiseLearnerV3 hop) may come after.
+#   detect_primary:   DECISIVE literal grep substrings (usually an import source
+#                     or a symbol that appears in no modern code). A match here
+#                     assigns the change.
+#   detect_secondary: corroborating behavioral substrings — broad, expect false
+#                     positives. Carry the matched line forward for eyeball
+#                     confirmation; NEVER assign on these alone.
+#   already_migrated: substrings meaning this change is already handled.
+#   import_rewrite:   from/to import targets applied in Phase 4 (authored changes
+#                     only).
+#   note:             caveat surfaced verbatim in the migration plan.
+#                     KEEP IT NARROW — `note` is only for what the agent needs
+#                     that is (a) NOT already in the change's guide and (b) NOT
+#                     generic Phase-5 policy from SKILL.md. Restating a guide
+#                     table row, or the fact that the guide's tables are the
+#                     checklist, belongs nowhere. Maintainer rationale (why an
+#                     entry has no `url`, how a guide is written) goes in a `#`
+#                     comment on the entry, not here. A note that outgrows ~1KB
+#                     has usually absorbed one of these — move it out rather
+#                     than letting the entry become the skill's scratchpad.
+
+target_rule: >
+  The target is the LATEST qiskit-ibm-runtime release, reached in two layers.
+  HOP A (documented): apply every change whose grounding is a release-note or
+  migration-guide `url`, bringing the code up to the current public API. HOP B
+  (client-side primitives): the eventual destination is the client-side
+  (Executor-backed) SamplerV2/EstimatorV2 in qiskit_ibm_runtime.executor_sampler
+  / executor_estimator, released and documented in 0.50.0 — which also DEPRECATES
+  the server-side SamplerV2/EstimatorV2 in favor of them.
+  It is grounded in the PUBLISHED migration guide named by the `url` on the
+  `server-to-client` entry (and by `companion_url` on `v1-to-v2`).
+  Always run hop A before hop B, and only attempt hop B when the INSTALLED
+  qiskit-ibm-runtime is >= 0.50.0 (min_runtime_version). State clearly in the
+  plan that hop B is now the recommended destination and that the server-side
+  primitives it replaces are on a deprecation clock.
+
+min_runtime_version: "0.50.0"   # client-side (Executor-backed) primitives released here
+
+changes:
+
+  # ───────────────────────────── PRIMITIVES (the bulk — fully authored) ──────
+
+  - id: v1-to-v2
+    title: "Qiskit Runtime V1 primitives (Sampler/Estimator) -> client-side (Executor-backed) V2"
+    domain: primitives
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-v1-to-client-side-primitives.md
+    companion_url: https://quantum.cloud.ibm.com/docs/guides/migrate-to-client-side-primitives.md
+    status: active
+    code_evidence: code
+    # The V1 primitives existed 0.2.0 -> removed in 0.28.0, but detection here is
+    # BEHAVIORAL, not version-gated: in a current runtime the top-level
+    # `Sampler`/`Estimator` names already resolve to a V2 primitive and `Options`
+    # resolves to `OptionsV2`, so an import line CANNOT decide V1 vs V2. The V1
+    # tells are behaviors: parallel-list .run(circuits, observables, parameter_values),
+    # result.quasi_dists / .values, a flat Options() with resilience_level /
+    # optimization_level, and set_options(). `quasi_dists` appears in NO V2 code and
+    # is decisive on its own. Import-line primaries are weaker ("worth inspecting").
+    # This covers the qiskit-ibm-runtime V1 primitives only. The Qiskit reference /
+    # statevector primitives (`from qiskit.primitives import ...`) have a SEPARATE
+    # migration guide and are intentionally NOT detected or rewritten here.
+    applies_from: null
+    applies_to: "0.28.0"     # V1 SamplerV1/EstimatorV1 fully removed in 0.28.0
+    order: 5
+    detect_primary:
+      - "quasi_dists"                               # V1 Sampler result — decisive; appears in no V2 code
+      - "from qiskit_ibm_runtime import Options"    # the V1 flat Options object (gone in V2)
+      - "IBMSampler"                                # original V1 factory class (0.2.0, removed 0.5.0) — decisive
+      - "IBMEstimator"                              # original V1 factory class (0.2.0, removed 0.6.0) — decisive
+      - "sampler.close()"                           # V1 primitive close() (dep 0.7, removed 0.9.4) — no V2 primitive has close()
+      - "estimator.close()"                         #   same; decisive on a match, but variable-name dependent
+    detect_secondary:
+      - ".values"                    # V1 Estimator result (broad; confirm it is a primitive result)
+      - "set_options("               # V1 options API
+      - "resilience_level"           # V1 flat option (also a V2 shortcut; confirm)
+      - "optimization_level"         # V1 primitive option (V2 does not transpile; confirm on a primitive)
+      - "skip_transpilation"         # V1 transpilation option — V2 has no transpilation option group at all
+      - "Options("                   # V1 Options() construction
+      - "import Sampler"             # bare V1 name (also a substring of SamplerV2 — confirm NOT V2)
+      - "import Estimator"
+      # Very old V1 tells (pre-run() era, qiskit-ibm-runtime < 0.11). See the guide's
+      # "Older V1 syntax you may need to modernize first" section.
+      - "IBMRuntimeService"          # pre-0.6 service name (renamed to QiskitRuntimeService in 0.4.0)
+      - "circuit_indices"            # index-based primitive call inputs (removed 0.15.0)
+      - "observable_indices"         # index-based primitive call inputs (removed 0.15.0)
+    already_migrated:
+      - "qiskit_ibm_runtime.executor_sampler"
+      - "qiskit_ibm_runtime.executor_estimator"
+    import_rewrite:
+      - from: "from qiskit_ibm_runtime import Sampler"      # runtime V1
+        to:   "from qiskit_ibm_runtime.executor_sampler import Sampler"
+      - from: "from qiskit_ibm_runtime import Estimator"    # runtime V1
+        to:   "from qiskit_ibm_runtime.executor_estimator import Estimator"
+      # Also DROP `from qiskit_ibm_runtime import Options` (no V2 Options class) and
+      # rewrite constructor `backend=`/`session=` -> `mode=`. These are structural,
+      # not simple line swaps — the guide's sections drive them, not import_rewrite.
+      # Very old V1 code (IBMSampler/IBMEstimator factory classes, IBMRuntimeService,
+      # context-manager usage, circuit_indices/observable_indices, auth=, constructor
+      # inputs) is ALSO structural — the guide's "Older V1 syntax you may need to
+      # modernize first" section drives it; do not attempt a mechanical import swap.
+    note: >
+      Compound migration: the V1 -> V2 INTERFACE change (parallel-list `.run(...)`
+      -> pub-based `.run([...])`; SparsePauliOp observables laid out per PUB; flat
+      `Options`/`resilience_level`/`set_options` -> the options tree; `quasi_dists`
+      / `.values` -> `result[i].data...`; ISA circuits required; `mode=`) AND the
+      server-side -> client-side DESTINATION change (hop B). The interface part is
+      in this change's `guide`; the client-side destination part is documented in
+      `companion_guide` (the shared server-to-client guide) and the guide
+      cross-references it rather than repeating it, so when applying this change you
+      MUST also apply the companion guide's two incompatible-changes tables — fetch it
+      by fetching `companion_url` (the published page). Highest-impact
+      compound case: V1 `resilience_level = 3`
+      (PEC) becomes `pec_mitigation = True` PLUS explicit NoiseLearnerV3 noise learning.
+
+  - id: server-to-client
+    title: "Server-side SamplerV2/EstimatorV2 -> client-side (Executor-backed) V2  [HOP B]"
+    domain: primitives
+    url: https://quantum.cloud.ibm.com/docs/guides/migrate-to-client-side-primitives.md
+    companion_guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-older-v2-primitives.md
+    status: active
+    code_evidence: code
+    applies_from: "0.50.0"   # client-side implementation released in 0.50.0 — hop B
+    applies_to: null
+    order: 6                 # deliberately LAST — this is the final client-side hop
+    # The decisive tokens are the V2 CLASS NAMES, not a bare `from qiskit_ibm_runtime
+    # import` line: that package also exports QiskitRuntimeService/Batch/Session and
+    # the V1 Sampler/Estimator, so the bare import line does not distinguish a
+    # server-side V2 usage. `already_migrated` (checked first) peels off the
+    # client-side `executor_*` imports before these match.
+    detect_primary:
+      - "SamplerV2"
+      - "EstimatorV2"
+      - "qiskit_ibm_runtime.sampler"
+      - "qiskit_ibm_runtime.estimator"
+    detect_secondary:
+      - "IBMInputValueError"
+      - "job.primitive_id"
+      - "job.inputs"
+      - "asdict("                    # asdict() on an options_models class is deprecated (0.49.0) -> options.model_dump()
+      - "shots_per_randomization"
+    already_migrated:
+      - "qiskit_ibm_runtime.executor_sampler"
+      - "qiskit_ibm_runtime.executor_estimator"
+    import_rewrite:
+      - from: "from qiskit_ibm_runtime import SamplerV2"
+        to:   "from qiskit_ibm_runtime.executor_sampler import Sampler"
+      - from: "from qiskit_ibm_runtime import EstimatorV2"
+        to:   "from qiskit_ibm_runtime.executor_estimator import Estimator"
+    # This is the HOP-B entry. The client-side implementation is fully released as of
+    # 0.50.0 (which also deprecates the server-side V2 primitives), and its migration guide
+    # is PUBLISHED — so this entry grounds in `url` alone, with no local copy to drift.
+    # That page also links onward to the published NoiseLearner -> NoiseLearnerV3 guide,
+    # which is its own change (`noiselearner-to-v3`) because V3 requires this hop.
+    # Its guides are written human-facing, as publishable migration guides: like every
+    # guide this skill uses they carry no apply/flag policy of their own — not a policy block, and no
+    # per-row verdict either — so SKILL.md's generic Phase-5 policy decides what is applied
+    # automatically and what is flagged, from what each table row actually asks for.
+    note: >
+      Interfaces and options are largely unchanged: most edits are the import rewrites above
+      plus the guide's two "Incompatible changes" tables. Two traps the guides do not flag:
+      (1) Do NOT collapse to the future top-level
+      `from qiskit_ibm_runtime import SamplerV2, EstimatorV2` — the guide calls that form
+      "coming soon," and that is still true on 0.50.0: the top-level names resolve to the
+      SERVER-SIDE `qiskit_ibm_runtime.sampler` / `.estimator` classes (verified on 0.50.0), which
+      0.50.0 DEPRECATES in favor of the `executor_*` ones — their DeprecationWarning says the
+      top-level import will be repointed in an upcoming release. Until it is, only the explicit
+      `executor_sampler` / `executor_estimator` imports above get you the client-side primitive.
+      (2) Options classes for both server-side and client-side V2 primitives have the same name
+      but different import paths. DO NOT assume they are equivalent just because they have the
+      same names. Server-side primitive options live in `qiskit_ibm_runtime.options`, whereas
+      client-side in `qiskit_ibm_runtime.options_models`. For example:
+      (2.1) `shots_per_randomization` means different things on the two paths: the SERVER-SIDE
+      `options.MeasureNoiseLearningOptions` keeps the field and deprecates only its INT form
+      (0.48.0 -> "auto"), while the CLIENT-SIDE `options_models` one REMOVES it entirely — so
+      "use auto" is NOT the client-side action; use the guide's Estimator table row instead.
+      (It stays in `detect_secondary` because it still flags code needing this migration.)
+      (2.2) SERVER-SIDE `options.EnvironmentOptions` class does NOT include `max_execution_time`, but
+      the CLIENT-SIDE one (`options_models.EnvironmentOptions`) does. However, that field is
+      deprecated and raises a `DeprecationWarning`. Always use the top level option
+      (`options.max_execution_time`) instead.
+      Apply `companion_guide` (older V2 option forms) BEFORE the client-side edits: the
+      client-side constructor rejects those forms, so a flat options dict still fails at
+      construction after the imports are rewritten.
+      Boundaries: `mode=` binding belongs to `execution-mode`; the
+      `NoiseLearnerV3Options.post_selection` -> `bit_flip_checks.post_circuit` rename belongs
+      to `noiselearner-post-selection`. If the code uses `NoiseLearner`, this hop FORCES
+      `noiselearner-to-v3` — a client-side Estimator cannot consume a `NoiseLearner` noise model.
+
+  - id: noiselearner-to-v3
+    title: "NoiseLearner -> NoiseLearnerV3 (Executor / client-side Estimator only)"
+    domain: misc-deprecations
+    url: https://quantum.cloud.ibm.com/docs/guides/migrate-to-noise-learner-v3.md
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: null         # `NoiseLearner` is NOT removed (still present on 0.50.0) — trigger-driven, not version-gated
+    order: 6.1               # AFTER server-to-client (6): V3 only works once the code is on Executor / client-side Estimator
+    # `NoiseLearnerV3` is not a primitive, but this change is COUPLED to the hop-B primitives
+    # change in both directions (see note), which is why it sits immediately after it.
+    # Substring care: "NoiseLearner(" does NOT match "NoiseLearnerV3(" and "NoiseLearnerOptions"
+    # does NOT match "NoiseLearnerV3Options", so both are decisive; "import NoiseLearner" IS a
+    # prefix of "import NoiseLearnerV3", so it is only corroborating.
+    detect_primary:
+      - "NoiseLearner("                       # the old class — decisive (V3 constructor does not match)
+      - "NoiseLearnerOptions"                 # server-side options class — decisive (V3Options does not match)
+      - ".noise_learner import"               # old module path (noise_learner_v3 does not match)
+      - "max_layers_to_learn"                 # exists only on the old options class
+    detect_secondary:
+      - "import NoiseLearner"                 # prefix of `import NoiseLearnerV3` — confirm it is NOT V3
+      - "layer_noise_model"                   # Estimator option fed by the learned model; its input type changed
+      - "LayerNoiseLearningOptions"
+      - "NoiseLearnerResult"                  # old result class (V3 returns NoiseLearnerV3Results)
+      - "twirling_strategy"                   # dropped on V3 (boxing defines it) — broad, also a general twirling option
+    already_migrated:
+      - "NoiseLearnerV3"
+    import_rewrite:
+      - from: "from qiskit_ibm_runtime.noise_learner import NoiseLearner"
+        to:   "from qiskit_ibm_runtime import NoiseLearnerV3"
+      - from: "from qiskit_ibm_runtime import NoiseLearner"      # confirm the name is NOT already NoiseLearnerV3
+        to:   "from qiskit_ibm_runtime import NoiseLearnerV3"
+      - from: "from qiskit_ibm_runtime.options import NoiseLearnerOptions"
+        to:   "from qiskit_ibm_runtime.options_models import NoiseLearnerV3Options"
+    note: >
+      WARN THE USER BEFORE EDITING: the two learners are locked to opposite Estimator
+      implementations. `NoiseLearner` works ONLY with the legacy server-side `Estimator`;
+      `NoiseLearnerV3` works ONLY with `Executor` / the CLIENT-SIDE `Estimator`. So if the code
+      still uses the server-side Estimator, migrating the learner alone WILL NOT WORK — say so
+      plainly and either do `server-to-client` (hop B) in the same pass, or leave the learner on
+      `NoiseLearner` until the user is ready to move. Conversely, doing hop B FORCES this change:
+      a client-side Estimator cannot consume a `NoiseLearner` noise model. Apply this change AFTER
+      hop B, never before. It is STRUCTURAL, not a rename: `run()` takes boxed
+      `CircuitInstruction`s (via a boxing pass manager + unique-box helper) instead of circuits,
+      and results become `NoiseLearnerV3Results` / `PauliLindbladMap` instead of
+      `NoiseLearnerResult` / `LayerError`. Boundaries: `.generators`/`.rates` -> `.error` on OLD
+      results is `noiselearner-result-accessors`; the `post_selection` rename is
+      `noiselearner-post-selection`.
+
+  # ─────────────────── NON-PRIMITIVE DOMAINS (authored) ──────────────────────
+  #
+  # Each entry below is now ACTIVE: its migration actions are authored in the
+  # shared local guide `migrate-non-primitive-apis.md` — one section per change, named
+  # by each entry's `# section:` comment (the guide is written human-facing, so its
+  # headings are topic titles rather than change ids).
+  # These are grounded LOCALLY rather than by `url`, because the release-notes page
+  # is a single 160KB+ document whose anchors do not isolate a section on fetch, so
+  # it is not a usable runtime checklist; the authoritative doc links live inside
+  # each guide section instead. Publishing any section online later is still the
+  # one-line `guide:` -> `url:` swap. Release notes (for reference only):
+  #   https://quantum.cloud.ibm.com/docs/api/qiskit-ibm-runtime/release-notes
+
+  - id: account-channel
+    title: "Account & channel: auth= -> channel=, and the ibm_quantum channel sunset"
+    domain: account-channel
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Account setup: `auth=` -> `channel=` and the `ibm_quantum` channel sunset"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.42.0"     # `channel="ibm_quantum"` removed by 0.42.0 (auth= replaced by channel= back in 0.3.0)
+    order: 1
+    detect_primary:
+      - "auth="                       # replaced by channel= in 0.3.0
+      - 'channel="ibm_quantum"'       # removed in 0.42.0 — use "ibm_quantum_platform"
+      - "channel='ibm_quantum'"
+    detect_secondary:
+      - "save_account("
+      - "channel="
+    note: >
+      Apply the "Account setup: `auth=` -> `channel=` and the `ibm_quantum` channel sunset" section of the guide. `auth=` -> `channel=` is
+      mechanical (0.3.0); `channel="ibm_quantum"` (removed by 0.42.0) is a decision,
+      not a string swap — prefer channel="ibm_quantum_platform" (channel="ibm_cloud"
+      still works), but the token/instance usually differ on the cloud platform, so
+      confirm the user has cloud credentials. NOTE the overlap with the primitives
+      `v1-to-v2` guide, which already handles `auth=` / channel for PRIMITIVE code in
+      its "Older V1 syntax" section; do the account/channel rewrite once.
+
+  - id: backend-run-removed
+    title: "backend.run() removed -> use the V2 primitives"
+    domain: execution
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Running circuits: `backend.run()` -> the V2 primitives"
+    companion_guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-v1-to-client-side-primitives.md
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.35.0"     # support for backend.run() removed in 0.35.0
+    order: 2
+    detect_primary:
+      - "backend.run("
+    detect_secondary:
+      - ".run("                       # broad — confirm it is a Backend, not a primitive
+    note: >
+      Apply the "Running circuits: `backend.run()` -> the V2 primitives" section of the guide. This is a STRUCTURAL
+      rewrite, not a symbol swap: bitstring/counts workloads move to SamplerV2,
+      expectation-value workloads to EstimatorV2. Present the rewrite as a diff and
+      confirm. The destination is the primitives, so the rewritten calls then feed
+      into the primitives `v1-to-v2` / `server-to-client` changes — the
+      companion_guide carries the ISA-circuit, options-tree, `mode=`, and
+      result-access details rather than duplicating them here.
+
+  - id: streaming-removed
+    title: "Result streaming & websocket callbacks removed"
+    domain: execution
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Result streaming and interim-result callbacks"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.38.0"     # streaming removed 0.32.0; remaining websocket code + callback env option removed 0.38.0
+    order: 3
+    detect_primary:
+      - "stream_results"
+      - "interim_results"
+    detect_secondary:
+      - "user_callback"
+      - "callback="
+    note: >
+      Apply the "Result streaming and interim-result callbacks" section of the guide. There is NO streaming
+      replacement (interim/stream results deprecated 0.25.0, endpoints removed
+      0.32.0, remaining websocket code + `callback` env option removed 0.38.0):
+      remove the streaming/callback wiring and poll `job.status()` / `job.result()`
+      instead. Flag it — this drops a capability.
+
+  - id: custom-programs-removed
+    title: "Custom runtime programs (upload/pprint/RuntimeProgram) removed"
+    domain: programs
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Custom runtime programs"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.16.0"     # methods related to using custom programs removed in 0.16.0
+    order: 4
+    detect_primary:
+      - "upload_program"
+      - "pprint_programs"
+      - "RuntimeProgram"
+    detect_secondary:
+      - "delete_program"
+      - "program_id"
+    note: >
+      Apply the "Custom runtime programs" section of the guide. Removed in 0.16.0
+      with NO drop-in: a thin Sampler/Estimator-wrapper program becomes a direct V2
+      primitive call (hand off to the primitives changes); a non-trivial custom
+      program must be ported to Qiskit Serverless / Qiskit Functions — a
+      project-level rewrite the skill flags, not performs.
+
+  - id: channel-strategy-removed
+    title: "channel_strategy (Q-CTRL) parameter removed"
+    domain: misc-deprecations
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "The `channel_strategy` (Q-CTRL) parameter"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.32.0"     # channel_strategy removed from QiskitRuntimeService in 0.32.0
+    order: 7
+    detect_primary:
+      - "channel_strategy"
+    detect_secondary: []
+    note: >
+      Apply the "The `channel_strategy` (Q-CTRL) parameter" section of the guide. Removed in 0.32.0.
+      A non-"q-ctrl" value (e.g. "default") is a mechanical keyword removal; a
+      `channel_strategy="q-ctrl"` user relied on Q-CTRL performance management, which
+      now lives in the Q-CTRL Fire Opal Performance Management Qiskit Function — flag
+      and confirm, since it changes how the workload runs.
+
+  - id: fake-v1-backends-removed
+    title: "Fake V1 backends removed -> use the V2 fake backends"
+    domain: misc-deprecations
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Fake V1 backends and `FakeProvider`"
+    companion_guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-v1-to-client-side-primitives.md
+    status: active
+    code_evidence: environment           # which fake classes still exist is not a simple grep
+    applies_from: null
+    applies_to: "0.33.0"     # remaining fake V1 backends removed by 0.33.0 (started 0.31.0)
+    order: 8
+    detect_primary: []
+    detect_secondary:
+      - "fake_provider"                  # soft — the V2 fake_provider is still valid; confirm a V1 fake class
+      - "FakeProvider"                   # the V1 provider (V2 is FakeProviderForBackendV2)
+    import_rewrite:
+      - from: "from qiskit_ibm_runtime.fake_provider import FakeProvider"   # V1 provider
+        to:   "from qiskit_ibm_runtime.fake_provider import FakeProviderForBackendV2"
+      # Individual V1 fake classes map to their V2 twins (FakeManila -> FakeManilaV2, ...)
+      # per the guide's section 2 — a name-by-name swap, not a single line rewrite.
+    note: >
+      Apply the "Fake V1 backends and `FakeProvider`" section of the guide. Fake V1 backends
+      were removed (0.31.0 -> 0.33.0). code_evidence is `environment`: rely on the
+      version window and confirm a SPECIFIC V1 fake class or the V1 `FakeProvider`
+      rather than a bare fake_provider import (the V2 fake_provider is still valid).
+      A fake V1 `backend.run()` call feeds into `backend-run-removed` / the primitives
+      (companion_guide): run the fake V2 backend via SamplerV2(mode=...).
+
+  - id: backend-limits-removed
+    title: "IBMBackend.max_shots / max_experiments / max_circuits deprecated & removed"
+    domain: misc-deprecations
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Backend limits: `max_shots`, `max_experiments`, `max_circuits`"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.41.0"     # max_shots/max_experiments removed in 0.41.0 (deprecated 0.37.0); max_circuits() now returns None
+    order: 9
+    detect_primary:
+      - ".max_shots"                  # IBMBackend attribute — removed 0.41.0 (also SamplerOptions field is default_shots, not max_shots)
+      - ".max_experiments"            # IBMBackend attribute — removed 0.41.0
+      - ".max_circuits"               # IBMBackend property/method — deprecated 0.37.0, now returns None
+    detect_secondary:
+      - "backend.configuration("      # the underlying config fields max_shots/max_experiments are no longer enforced
+    note: >
+      Apply the "Backend limits: `max_shots`, `max_experiments`, `max_circuits`" section of the guide. The IBMBackend
+      attributes `max_shots` and `max_experiments` and the `max_circuits` property
+      were deprecated in 0.37.0; `max_shots`/`max_experiments` were REMOVED in 0.41.0
+      and `max_circuits()` now returns None. There is NO replacement backend
+      attribute — the old `backend.configuration()` max_shots/max_experiments fields
+      are no longer relevant or enforced. Flag every read: replace `backend.max_shots`
+      with an explicit shot count (Sampler default 4096; bounded by job limits, not a
+      backend field — at most 10M executions = circuits x shots per Sampler job), and
+      drop `max_experiments` / `max_circuits` reads rather than branching on them. This
+      commonly appears as `shots = backend.max_shots` feeding a primitive's
+      `default_shots` — see the job-limits guide.
+
+  - id: service-backend-lookup
+    title: "QiskitRuntimeService.get_backend() -> backend(), and name is now required"
+    domain: account-channel
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Backend lookup: `get_backend()` -> `backend(name)`"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.30.0"     # get_backend() removed in 0.30.0; name became required on backend() in 0.30.0
+    order: 1.5
+    detect_primary:
+      - "get_backend("               # removed 0.30.0 -> backend()
+    detect_secondary:
+      - ".backend()"                 # no-arg backend() no longer returns the first backend — name is required now
+    note: >
+      Apply the "Backend lookup: `get_backend()` -> `backend(name)`" section of the guide. `get_backend()` was
+      deprecated in 0.24.0 and REMOVED in 0.30.0 -> use `backend(name)`. Separately,
+      `name` became a REQUIRED parameter of `backend()` in 0.30.0 (it no longer
+      returns the first available backend when name is omitted). Renaming
+      `get_backend(...)` -> `backend(...)` is mechanical; a no-arg `backend()` /
+      `get_backend()` relied on the removed "first backend" behavior and must be given
+      an explicit name (or use `service.least_busy(...)`) — flag that one.
+
+  - id: service-runtime-removed
+    title: "QiskitRuntimeService.runtime attribute deprecated & removed"
+    domain: account-channel
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "The `QiskitRuntimeService.runtime` attribute"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.22.0"     # `runtime` property removed in 0.22.0 (deprecated 0.18.0)
+    order: 1.6
+    # The attribute RETURNED THE SERVICE ITSELF, so the fix is deleting one link from the
+    # attribute chain. Primaries are the `<x>.runtime.<service-method>` forms, which no
+    # modern code produces; the bare `.runtime` token is secondary because it also occurs
+    # inside module paths (`qiskit_ibm_runtime.runtime_job_v2`, ...).
+    detect_primary:
+      - "service.runtime"            # the canonical form — `service.runtime.<anything>`
+      - ".runtime.backend"           # e.g. provider.runtime.backend(...) / .backends()
+      - ".runtime.jobs("
+      - ".runtime.least_busy("
+    detect_secondary:
+      - ".runtime"                   # broad — also matches `qiskit_ibm_runtime.runtime_*` module paths
+    note: >
+      Apply the "The `QiskitRuntimeService.runtime` attribute" section of the guide.
+      Deprecated in 0.18.0, REMOVED in 0.22.0. It existed only for parity with the older
+      qiskit-ibm-provider syntax and returned the service itself, so deleting `.runtime`
+      from the attribute chain is results-preserving. Confirm the receiver really is a
+      QiskitRuntimeService (or an old qiskit-ibm-provider `provider.runtime`) before
+      editing — a `.runtime` secondary hit is often just a module path. If the code is
+      `provider.runtime.run(program_id=...)`, dropping `.runtime` is cosmetic and the real
+      migration is `custom-programs-removed`.
+
+  - id: cloud-simulators-retired
+    title: "IBM Quantum cloud simulators retired -> local simulator, with a commented-out real QPU"
+    domain: misc-deprecations
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Cloud simulators are retired: simulate locally, run on a QPU"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: null         # a SERVICE retirement (15 May 2024), not tied to a client release — trigger-driven
+    order: 1.7               # early: the execution target must be valid before the primitive/session changes are applied
+    # The five retired backend NAMES are decisive — they resolve on no current instance, so a
+    # match cannot be anything but pre-retirement code. `already_migrated` peels off code that
+    # already simulates locally (fake_provider / AerSimulator) before these match.
+    detect_primary:
+      - "ibmq_qasm_simulator"
+      - "simulator_statevector"
+      - "simulator_mps"
+      - "simulator_extended_stabilizer"
+      - "simulator_stabilizer"
+    detect_secondary:
+      - "simulator=True"             # backends(simulator=True) / least_busy(simulator=True) discovery
+      - "backends(simulator"
+    already_migrated:
+      - "fake_provider"
+      - "AerSimulator"
+    note: >
+      Apply the "Cloud simulators are retired: simulate locally, run on a QPU" section of the
+      guide. Retired 15 May 2024: the names
+      no longer resolve (`QiskitBackendNotFoundError`) and simulation moved to the user's machine.
+      THE ACTION IS NOT A ONE-FOR-ONE SWAP — write BOTH paths into the code: an active local
+      simulator AND the real-QPU lines COMMENTED OUT directly beneath, so the user only has to
+      uncomment when they are ready to spend QPU time. Say that in the report so they know the
+      commented lines are deliberate, not leftovers. Choose the `Fake*` backend matching the QPU
+      they intend to use, and keep `generate_preset_pass_manager(backend=backend, ...)` pointed at
+      the same variable so flipping the toggle also re-targets transpilation. Local testing mode
+      needs qiskit-ibm-runtime >= 0.22.0, and warn
+      that local numbers are a code check, not a hardware prediction. If the cloud simulator was
+      used for SCALE rather than device noise, a fake backend is the wrong replacement — flag
+      AerSimulator or stabilizer simulation instead.
+
+  - id: execution-mode
+    title: "Execution binding: backend=/session= -> mode=, backend-name strings & service= removed"
+    domain: execution
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Execution binding: `backend=` / `session=` -> `mode=`"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.34.0"     # backend=/session= removed 0.30.0; backend-name string & service= in Session/Batch removed 0.34.0
+    order: 2.5
+    detect_primary:
+      - "session="                   # Sampler/Estimator session= constructor arg -> mode= (removed 0.30.0)
+      - "Session(service="           # service= no longer valid in Session (removed 0.34.0)
+      - "Batch(service="             # service= no longer valid in Batch (removed 0.34.0)
+    detect_secondary:
+      - "backend="                   # broad — confirm it is a Sampler/Estimator constructor arg, not generate_preset_pass_manager(backend=...)
+      - ".session"                   # primitive .session property -> .mode
+      - "service.run("               # public run() -> private _run() (removed 0.30.0); overlaps custom-programs-removed
+      - "session.run("
+    note: >
+      Apply the "Execution binding: `backend=` / `session=` -> `mode=`" section of the guide. The Sampler/Estimator `backend=`
+      and `session=` constructor args were deprecated in 0.24.0 and REMOVED in 0.30.0 in
+      favor of a single `mode=` (Backend | Session | Batch); the primitive `.session`
+      property became `.mode`. Passing a backend-NAME string (as the mode, or into
+      `Session`/`Batch`) and the `service=` parameter of `Session`/`Batch` were removed
+      in 0.34.0 — pass the backend OBJECT (`service.backend(name)`) instead. The
+      `backend=`/`session=`->`mode=` and backend-string details are worked in full (with a
+      before/after example) in this change's own "execution-mode" section of the guide.
+      `QiskitRuntimeService.run()` /
+      `Session.run()` also became a private `_run()` (0.30.0) — but that low-level program
+      invocation overlaps `custom-programs-removed`; flag it there if the code used it.
+
+  - id: session-from-id-backend
+    title: "Session.from_id(): backend param removed (single-backend sessions), service became required in 0.28.0"
+    domain: execution
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "`Session.from_id()`: no `backend`, and `service` is required"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: null         # backend= deprecated 0.15.0 and since removed; service optional through 0.26.0, required from 0.28.0 — trigger-driven (from_id(...))
+    order: 2.6
+    detect_primary:
+      - "from_id("                   # Session.from_id() — the backend= arg was removed (verified absent on 0.49.0); service is required from 0.28.0
+    detect_secondary:
+      - ".from_id"
+    note: >
+      Apply the "`Session.from_id()`: no `backend`, and `service` is required" section of the guide. `Session.from_id()`'s
+      `backend` parameter was DEPRECATED in 0.15.0 (a session is bound to a single backend)
+      and has since been REMOVED — on 0.49.0 the signature is
+      `from_id(session_id, service, use_fractional_gates=False, calibration_id=None)`, so
+      passing `backend=` raises TypeError. Mechanical: drop the `backend` argument, keep
+      `session_id` and `service`. IMPORTANT — `service` was NOT always required: briefly
+      required in 0.15.0, reverted to optional in 0.15.1, stayed optional (deprecation
+      warning added in 0.23.0) through at least 0.26.0, and only became a required
+      positional parameter in 0.28.0 (2024-08-15). A `from_id(session_id)` call with no
+      `service` is only broken relative to the current/target runtime (>= 0.28.0) — flag it
+      as a version-threshold issue, not as "always broken"/"pre-existing bug regardless of
+      version," when the source predates 0.28.0. Only relevant to code that reconstructs a
+      Session from a stored id; confirm `from_id(` is `Session.from_id`, not an unrelated
+      method of the same name.
+
+  - id: session-open-removed
+    title: "service.open() and IBMBackend.open_session()/close_session() removed -> the Session class"
+    domain: execution
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Opening a session: `service.open()` and `backend.open_session()`"
+    companion_guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-v1-to-client-side-primitives.md
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.35.0"     # later of the two removals: service.open() 0.9.4, backend.open_session()/close_session() 0.35.0
+    order: 2.7
+    # `open_session` / `close_session` / `RuntimeSession` appear in no modern code and are
+    # decisive. `service.open(` is strong but not airtight — an unrelated object named
+    # `service` with an `open()` method would match, so confirm the receiver.
+    detect_primary:
+      - "open_session"               # IBMBackend.open_session() — removed 0.35.0
+      - "close_session"              # IBMBackend.close_session() — removed 0.35.0
+      - "RuntimeSession"             # return type of the removed service.open()
+      - ".open(program_id"           # the removed service.open(program_id, inputs, ...) signature
+      - "service.open("
+    detect_secondary:
+      - "backend.run("               # what an open_session() block usually wrapped — overlaps backend-run-removed
+      - "max_time"                   # open_session(max_time=...) -> Session(max_time=...) (still a valid Session arg)
+    note: >
+      Apply the "Opening a session: `service.open()` and `backend.open_session()`" section
+      of the guide. `QiskitRuntimeService.open()` —
+      a CUSTOM-PROGRAM session returning `RuntimeSession` — was REMOVED in 0.9.4.
+      `IBMBackend.open_session()` / `close_session()` — sessions for `backend.run()` — were
+      deprecated in 0.23 and REMOVED in 0.35.0 TOGETHER WITH `backend.run()` itself (verified
+      against the 0.34.0 and 0.35.0 tags: both methods are still defined at 0.34.0). Do not
+      report them as a 0.34.0 removal. Destination for both is a `Session` driving a V2
+      primitive, so this change is a hand-off point: `backend.run(...)` calls inside an
+      `open_session()` block belong to `backend-run-removed` (then the primitives guides via
+      companion_guide), and a `service.open(program_id=...)` call belongs to
+      `custom-programs-removed`. Boundary: binding the session to the primitive with `mode=`
+      is `execution-mode`; the same-backend rule is `session-backend-consistency`.
+
+  - id: session-backend-consistency
+    title: "A primitive inside a Session/Batch context manager must use the session's backend"
+    domain: execution
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "One backend per session"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.34.0"     # the check was ADDED in 0.34.0; older code may rely on the old silent job-mode behavior
+    order: 2.55
+    # NO SINGLE SUBSTRING IS DECISIVE HERE: the trigger is a RELATIONSHIP between an
+    # enclosing `with Session(...)`/`Batch(...)` and a primitive's `mode=` inside it, which a
+    # grep cannot express. detect_primary is therefore deliberately EMPTY — inclusion comes
+    # from the version window (source < 0.34.0), and the secondaries below say which blocks
+    # to read. Unlike a removed symbol, this one can also be latent in code that never
+    # raised: before 0.34.0 the primitive silently ran in JOB MODE against the backend
+    # passed in, ignoring the enclosing session.
+    detect_primary: []
+    detect_secondary:
+      - "with Session("              # the enclosing context manager to read
+      - "with Batch("
+      - "mode=backend"               # a backend (not the session) passed as the mode inside such a block
+    note: >
+      Apply the "One backend per session" section of the guide. Since 0.34.0 a primitive
+      constructed inside an open `Session`/`Batch` context manager runs INSIDE that session
+      even when a backend is passed as `mode=`, and raises `ValueError` ("The backend passed
+      in to the primitive is different from the session backend...") when that backend is not
+      the session's; passing the session's OWN backend still works but logs a warning.
+      Detection is correlation-based (see the comment above): rely on the version window and
+      READ each `with Session(...)` / `with Batch(...)` block rather than expecting a
+      decisive grep hit. Report it as a BEHAVIOR change, not only an error: pre-0.34.0 code
+      with a mismatched backend was silently running outside the session it appears to be in,
+      so the fix is a decision about which the author meant — `mode=session` (or omitting
+      `mode`) to run in the session, or moving the primitive out of the block to keep job
+      mode. Boundary: the `backend=`/`session=` -> `mode=` rename itself is `execution-mode`.
+
+  - id: runtimejob-and-primitive-id
+    title: "RuntimeJob -> RuntimeJobV2 (status() returns str), and program_id -> primitive_id"
+    domain: jobs-results
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Job objects: `RuntimeJob` -> `RuntimeJobV2` and `program_id` -> `primitive_id`"
+    companion_guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-v1-to-client-side-primitives.md
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.42.0"     # RuntimeJob removed 0.42.0 (deprecated 0.38.0); program_id removed 0.30.0 (deprecated 0.24.0)
+    order: 5.5
+    detect_primary:
+      - "program_id"                 # RuntimeJob.program_id -> primitive_id (removed 0.30.0)
+      - "JobStatus"                  # comparing status() against qiskit's JobStatus enum — status() now returns a str
+    detect_secondary:
+      - "RuntimeJob"                 # the RuntimeJob class (removed 0.42.0) — confirm it is NOT RuntimeJobV2
+      - ".status()"                  # RuntimeJobV2.status() returns a string, not JobStatus
+    note: >
+      Apply the "Job objects: `RuntimeJob` -> `RuntimeJobV2` and `program_id` -> `primitive_id`" section of the guide. The `RuntimeJob`
+      class was deprecated in 0.38.0 and REMOVED in 0.42.0 — all primitives return
+      `RuntimeJobV2`, whose `status()` returns a STRING (e.g. "DONE"/"RUNNING") rather
+      than qiskit's `JobStatus` enum, so any `job.status() is JobStatus.X` comparison must
+      become a string comparison (the client-side guide's "Job status" section shows this).
+      Separately, `RuntimeJob.program_id` was renamed to `primitive_id` (deprecated
+      0.24.0, removed 0.30.0) — a mechanical rename. NOTE the `primitive_id` VALUE itself
+      also changed on the client-side hop (server-side reports `executor`); that value
+      change belongs to `server-to-client`, this entry only covers the method rename.
+
+  - id: runtime-options-deprecated
+    title: "RuntimeOptions class deprecated (was only for custom programs)"
+    domain: programs
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "The `RuntimeOptions` class"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: null         # DEPRECATED in 0.43, not yet removed — trigger-driven, not version-gated
+    order: 4.5
+    detect_primary:
+      - "RuntimeOptions"             # deprecated 0.43; distinct from the primitive Options/OptionsV2 tree
+    detect_secondary: []
+    note: >
+      Apply the "The `RuntimeOptions` class" section of the guide. `RuntimeOptions`
+      was DEPRECATED in 0.43 (not yet removed) — it only ever configured custom-program
+      invocation (`service.run(..., options=RuntimeOptions(...))`) and is no longer
+      needed. This overlaps `custom-programs-removed`: if the code still calls
+      `service.run(program_id=...)`, the whole call is the real migration (port to a V2
+      primitive or Qiskit Serverless). If `RuntimeOptions` only carried `backend=`, that
+      selection now lives in the primitive's `mode=`. Flag — do not silently delete.
+
+  - id: job-management-removed
+    title: "Job-management churn: check_pending_jobs() removed, queue_usage()/queue_info() gone"
+    domain: jobs-results
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Queue and job-management helpers"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: null         # check_pending_jobs() removed 0.42.0; queue_usage() deprecated (new platform); queue_info() has no RuntimeJobV2 equivalent — mixed, trigger-driven
+    order: 5.6
+    detect_primary:
+      - "check_pending_jobs"         # removed 0.42.0
+      - "queue_usage"                # RuntimeJob.queue_usage() — deprecated, not supported on the new platform
+      - "queue_info"                 # RuntimeJob.queue_info() — no equivalent on RuntimeJobV2 (real or LocalRuntimeJob)
+    detect_secondary: []
+    note: >
+      Apply the "Queue and job-management helpers" section of the guide. `check_pending_jobs()`
+      was REMOVED in 0.42.0; `RuntimeJob.queue_usage()` is deprecated and NOT supported
+      on the new IBM Quantum Platform; `RuntimeJob.queue_info()` has NO equivalent on
+      `RuntimeJobV2` (confirmed absent from both the real-service job class and
+      `LocalRuntimeJob` by introspection and against the current API reference — raises
+      `AttributeError` either way, session/batch-wrapped or not). All three are
+      flag-and-remove (no drop-in); for `queue_info()` the closest available signal is
+      `job.status() == 'QUEUED'` (no position/ETA). IMPORTANT: `delete_job()` is
+      intentionally NOT covered here — it was removed in 0.42.0 but REINTRODUCED and
+      supported on the new platform in 0.45.0, so current code using it is fine; do not
+      flag `delete_job()`.
+
+  - id: noiselearner-result-accessors
+    title: "NoiseLearnerResult/LayerError .generators/.rates removed -> .error; classes moved to results package"
+    domain: jobs-results
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Noise-learner results: `.generators` / `.rates` -> `.error`"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.36.0"     # .generators/.rates removed from NoiseLearnerResult/LayerError in 0.36.0
+    order: 5.7
+    # DECISIVE signal is the OLD import path (moved to `results` in 0.48.0). The accessor
+    # tells `.generators`/`.rates` are SECONDARY on purpose: they are still valid on a
+    # PauliLindbladError (the `.error` object), so they are ambiguous and must be
+    # eyeball-confirmed to be on a NoiseLearnerResult/LayerError before rewriting.
+    detect_primary:
+      - "noise_learner_result"       # old import path qiskit_ibm_runtime.utils.noise_learner_result -> results (0.48.0)
+    detect_secondary:
+      - ".generators"                # removed from NoiseLearnerResult/LayerError -> .error.generators (still VALID on a PauliLindbladError)
+      - ".rates"                     # same — confirm the object is a NoiseLearner result / LayerError, not an .error
+      - "NoiseLearner"               # presence of noise learning corroborates a .generators/.rates hit
+    import_rewrite:
+      - from: "from qiskit_ibm_runtime.utils.noise_learner_result import"
+        to:   "from qiskit_ibm_runtime.results import"
+    note: >
+      Apply the "Noise-learner results: `.generators` / `.rates` -> `.error`" section of the guide. The
+      `NoiseLearnerResult` AND per-layer `LayerError` `.generators`/`.rates` properties were
+      REMOVED in 0.36.0 — reach them through `.error` (a `PauliLindbladError`):
+      `result.data[i].generators` -> `result.data[i].error.generators` (same for `.rates`).
+      Pure access-path change, results-preserving, mechanical. CAVEAT: `.generators`/`.rates`
+      are still valid ON a `PauliLindbladError` (i.e. on `x.error`), so only rewrite when the
+      object is a NoiseLearnerResult/LayerError; a `detect_secondary` `.generators`/`.rates`
+      hit needs eyeball confirmation and is never assigned on its own. Separately,
+      `NoiseLearnerResult`/`LayerError`/`PauliLindbladError` MOVED to the
+      `qiskit_ibm_runtime.results` package in 0.48.0 (old
+      `qiskit_ibm_runtime.utils.noise_learner_result` path still works but is deprecated) — a
+      mechanical import rewrite.
+
+  - id: noiselearner-post-selection
+    title: "NoiseLearnerV3 post_selection option renamed -> bit_flip_checks.post_circuit"
+    domain: misc-deprecations
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Noise learning: `post_selection` -> `bit_flip_checks.post_circuit`"
+    status: active
+    code_evidence: code
+    applies_from: "0.49.0"   # client-side-only option; deprecated 0.49.0 (guide-grounded — see note)
+    applies_to: null
+    order: 9.5
+    # `NoiseLearnerV3` is NOT a primitive, so this option rename is a non-primitive change even
+    # though it surfaces alongside the client-side (hop-B) primitives migration. `post_selection`
+    # is the decisive token: it exists ONLY on the client-side `NoiseLearnerV3Options`
+    # (options_models), not on the server-side `options.NoiseLearnerOptions`.
+    detect_primary:
+      - "post_selection"             # NoiseLearnerV3Options.post_selection -> bit_flip_checks.post_circuit
+    detect_secondary:
+      - "bit_flip_checks"            # the destination subtree — presence means it may be partly migrated
+      - "NoiseLearnerV3"             # corroborates a noise-learner usage
+    note: >
+      Apply the "Noise learning: `post_selection` -> `bit_flip_checks.post_circuit`" section of the guide. `NoiseLearnerV3`'s
+      `post_selection` option was deprecated (0.49.0) and RENAMED (not removed) to
+      `bit_flip_checks.post_circuit`; the two subtrees are structurally identical
+      (`enable`/`x_pulse_type`/`strategy`), so it is a mechanical, field-for-field path rewrite
+      (`options.post_selection.enable` -> `options.bit_flip_checks.post_circuit.enable`). It is a
+      client-side-only option (options_models). The 0.49.0 release note records only the
+      DEPRECATION, not the destination path, so the rename mapping is guide-grounded (no `url`).
+      Setting `post_selection` still works but emits a DeprecationWarning and will be removed no
+      sooner than three months after 0.49.0.
+
+  - id: pulse-surface-removed
+    title: "Pulse surface removed: backend.defaults(), PulseBackendConfiguration/PulseDefaults, channel methods"
+    domain: misc-deprecations
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Pulse-level access"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: "0.41.0"     # backend.defaults() removed 0.41.0 (dep 0.38.0); PulseBackendConfiguration/PulseDefaults removed 0.37.0 (Qiskit 2.0)
+    order: 8.5
+    detect_primary:
+      - "PulseBackendConfiguration"  # removed 0.37.0 (Qiskit 2.0) -> QasmBackendConfiguration
+      - "PulseDefaults"              # backend defaults no longer needed for the Target
+      - "drive_channel"              # IBMBackend channel methods removed with pulse (Qiskit 2.0)
+      - "control_channel"
+      - "measure_channel"
+      - "acquire_channel"
+    detect_secondary:
+      - ".defaults()"                # backend.defaults() removed 0.41.0 (broad — confirm it is a Backend)
+    note: >
+      Apply the "Pulse-level access" section of the guide. Pulse-level access was
+      removed alongside Qiskit 2.0: `PulseBackendConfiguration` / `PulseDefaults` and the
+      `IBMBackend` channel methods (`drive_channel`/`control_channel`/`measure_channel`/
+      `acquire_channel`) were removed in 0.37.0, and `backend.defaults()` (deprecated
+      0.38.0) was removed in 0.41.0. There is NO replacement — pulse-level control is gone
+      from Qiskit. Backends now return a `QasmBackendConfiguration` and the `Target` is
+      built without pulse defaults. Flag every occurrence; a workload that genuinely needed
+      pulse control is a redesign, not a code edit. Boundary: this entry is the CLIENT API
+      surface only — circuits that carry pulse gates are `pulse-gates-unsupported`.
+
+  - id: pulse-gates-unsupported
+    title: "Pulse gates no longer supported by the service (3 February 2025) -> fractional gates"
+    domain: misc-deprecations
+    guide: .claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md   # section: "Pulse gates are no longer supported"
+    status: active
+    code_evidence: code
+    applies_from: null
+    applies_to: null         # a SERVICE removal (3 February 2025), not tied to a client release — trigger-driven
+    order: 8.6               # immediately after pulse-surface-removed (8.5): same withdrawal, service side
+    # Substring care: "RZXCalibrationBuilder" also catches the "...NoEcho" variant, and does NOT
+    # contain "RXCalibrationBuilder" (RZX vs RX), so both names are needed. On a CURRENT stack these
+    # symbols raise ImportError/ModuleNotFoundError (qiskit.pulse, add_calibration and the
+    # calibration-builder passes all went in Qiskit SDK 2.0), so the code usually fails to import
+    # before the service ever sees it — do not report an ImportError here as an unrelated problem.
+    detect_primary:
+      - "qiskit.pulse"
+      - "pulse.builder"
+      - "ScheduleBlock"
+      - "add_calibration"
+      - "RXCalibrationBuilder"
+      - "RZXCalibrationBuilder"      # also matches RZXCalibrationBuilderNoEcho
+    detect_secondary:
+      - "calibration"                # broad — confirm it is a pulse calibration, not a calibration_id
+      - "Play("
+      - "Gaussian("
+    already_migrated:
+      - "use_fractional_gates"
+    note: >
+      Apply the "Pulse gates are no longer supported" section of the guide. On 3 February 2025 the
+      service stopped accepting PULSE GATES (custom calibrations attached to a submitted circuit);
+      the replacement is FRACTIONAL GATES, requested per backend with
+      `service.backend(name, use_fractional_gates=True)` (also valid on `least_busy`). NOT
+      MECHANICAL — do not offer an auto-apply diff: fractional gates cover only single- and
+      two-qubit rotations, and anything beyond that (custom pulse shapes, pulse-level
+      characterization) has no drop-in and means Qiskit Dynamics, i.e. a redesign the user has to
+      scope. Flag every match for human review and say which bucket you think it falls in. Boundary:
+      the removal of the pulse API surface (`backend.defaults()`, `PulseBackendConfiguration`,
+      channel accessors) is `pulse-surface-removed`.

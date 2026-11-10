@@ -1,0 +1,170 @@
+{
+  "repository": "https://github.com/Qiskit/skills",
+  "revision": "0888fb799b8a3972da65c2c0ea1965e27957111d",
+  "license": "Apache-2.0",
+  "license_path": ".agents/skills/QISKIT-SKILLS-LICENSE.txt",
+  "skills": [
+    {
+      "name": "migrate-qiskit-ibm-runtime",
+      "path": ".agents/skills/migrate-qiskit-ibm-runtime",
+      "upstream_path": "skills/migrate-qiskit-ibm-runtime"
+    },
+    {
+      "name": "select-error-mitigation",
+      "path": ".agents/skills/select-error-mitigation",
+      "upstream_path": "skills/select-error-mitigation"
+    },
+    {
+      "name": "select-sqd-eigensolver",
+      "path": ".agents/skills/select-sqd-eigensolver",
+      "upstream_path": "skills/select-sqd-eigensolver"
+    },
+    {
+      "name": "simulate-fermionic-systems",
+      "path": ".agents/skills/simulate-fermionic-systems",
+      "upstream_path": "skills/simulate-fermionic-systems"
+    }
+  ],
+  "files": {
+    ".agents/skills/QISKIT-SKILLS-LICENSE.txt": {
+      "upstream_path": "LICENSE.txt",
+      "git_blob_sha1": "ac12e74f5e16a6f6fd3567ba29a4e668387d19b1"
+    },
+    ".agents/skills/migrate-qiskit-ibm-runtime/SKILL.md": {
+      "upstream_path": "skills/migrate-qiskit-ibm-runtime/SKILL.md",
+      "git_blob_sha1": "df0c8a90d9428e8fdfc97881f9e192795c698a35"
+    },
+    ".agents/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md": {
+      "upstream_path": "skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md",
+      "git_blob_sha1": "bd537091f6a1a24702b9a591628e848a5e6ee401"
+    },
+    ".agents/skills/migrate-qiskit-ibm-runtime/migrate-older-v2-primitives.md": {
+      "upstream_path": "skills/migrate-qiskit-ibm-runtime/migrate-older-v2-primitives.md",
+      "git_blob_sha1": "7dab7223c83571512a1ca86fc0a9d557eacd8ee7"
+    },
+    ".agents/skills/migrate-qiskit-ibm-runtime/migrate-v1-to-client-side-primitives.md": {
+      "upstream_path": "skills/migrate-qiskit-ibm-runtime/migrate-v1-to-client-side-primitives.md",
+      "git_blob_sha1": "7641c9a39f7793b8469206bd73f3d53e72cb7987"
+    },
+    ".agents/skills/migrate-qiskit-ibm-runtime/registry.yaml": {
+      "upstream_path": "skills/migrate-qiskit-ibm-runtime/registry.yaml",
+      "git_blob_sha1": "41e95476873acb141fc3ac08b894b2010d68843d"
+    },
+    ".agents/skills/select-error-mitigation/SKILL.md": {
+      "upstream_path": "skills/select-error-mitigation/SKILL.md",
+      "git_blob_sha1": "6b972064a6e40b4614606cbe47bc911d1c19db85"
+    },
+    ".agents/skills/select-error-mitigation/_schema.md": {
+      "upstream_path": "skills/select-error-mitigation/_schema.md",
+      "git_blob_sha1": "45615c0eea8241845faf6b831cd39d7e373b9931"
+    },
+    ".agents/skills/select-error-mitigation/dynamical-decoupling.md": {
+      "upstream_path": "skills/select-error-mitigation/dynamical-decoupling.md",
+      "git_blob_sha1": "8377a2d7c2c603dcdfbce8fb1b45304efa68a629"
+    },
+    ".agents/skills/select-error-mitigation/m3.md": {
+      "upstream_path": "skills/select-error-mitigation/m3.md",
+      "git_blob_sha1": "eab0a07d0a3ec84e5c78c5a74b5824fe394cf817"
+    },
+    ".agents/skills/select-error-mitigation/no-mitigation.md": {
+      "upstream_path": "skills/select-error-mitigation/no-mitigation.md",
+      "git_blob_sha1": "260c57120c4a7ef99c1d76bf5a35ca2842cb7f47"
+    },
+    ".agents/skills/select-error-mitigation/obp.md": {
+      "upstream_path": "skills/select-error-mitigation/obp.md",
+      "git_blob_sha1": "23e6be3adca07d87cd828d97a4b0cb575ec32a51"
+    },
+    ".agents/skills/select-error-mitigation/pauli-twirling.md": {
+      "upstream_path": "skills/select-error-mitigation/pauli-twirling.md",
+      "git_blob_sha1": "5ea4c58d6c11a9ca37e628259e8cb7ce169f0672"
+    },
+    ".agents/skills/select-error-mitigation/pec-slc.md": {
+      "upstream_path": "skills/select-error-mitigation/pec-slc.md",
+      "git_blob_sha1": "893266516400b341b4e509389d37620c7d91121f"
+    },
+    ".agents/skills/select-error-mitigation/pec.md": {
+      "upstream_path": "skills/select-error-mitigation/pec.md",
+      "git_blob_sha1": "c569456a17f0d8ab721745db07c29bd293f927ca"
+    },
+    ".agents/skills/select-error-mitigation/pna.md": {
+      "upstream_path": "skills/select-error-mitigation/pna.md",
+      "git_blob_sha1": "0fb1c00be213ef44476f16d7b1fd285c9e97c866"
+    },
+    ".agents/skills/select-error-mitigation/postselection-non-markovian.md": {
+      "upstream_path": "skills/select-error-mitigation/postselection-non-markovian.md",
+      "git_blob_sha1": "3b923d03345d1e7078d2b13f98d0c3428eff5d1c"
+    },
+    ".agents/skills/select-error-mitigation/references/pea-background.md": {
+      "upstream_path": "skills/select-error-mitigation/references/pea-background.md",
+      "git_blob_sha1": "97376507a1463be97308d7e0825336388e382bea"
+    },
+    ".agents/skills/select-error-mitigation/references/pub-broadcasting.md": {
+      "upstream_path": "skills/select-error-mitigation/references/pub-broadcasting.md",
+      "git_blob_sha1": "393920e5e2f83ce48f683bdac6309cdb000d45f7"
+    },
+    ".agents/skills/select-error-mitigation/registry.yaml": {
+      "upstream_path": "skills/select-error-mitigation/registry.yaml",
+      "git_blob_sha1": "8bfff24ff3b4ed1de3f402c165fb4c1eabae4dcc"
+    },
+    ".agents/skills/select-error-mitigation/scripts/inspect_isa.py": {
+      "upstream_path": "skills/select-error-mitigation/scripts/inspect_isa.py",
+      "git_blob_sha1": "89692fb1ac77166e0e97c3a84c106101456f23c6"
+    },
+    ".agents/skills/select-error-mitigation/scripts/verify_c1.py": {
+      "upstream_path": "skills/select-error-mitigation/scripts/verify_c1.py",
+      "git_blob_sha1": "b33059cc0a970ac68597010e5675fd4c2fbff1e8"
+    },
+    ".agents/skills/select-error-mitigation/scripts/verify_c2.py": {
+      "upstream_path": "skills/select-error-mitigation/scripts/verify_c2.py",
+      "git_blob_sha1": "a91936d1122a96e93ffbe9a75b5815bb3545c1d7"
+    },
+    ".agents/skills/select-error-mitigation/trex.md": {
+      "upstream_path": "skills/select-error-mitigation/trex.md",
+      "git_blob_sha1": "bf015ab8e037504c42000c3cfa1570bf2eef25c7"
+    },
+    ".agents/skills/select-error-mitigation/verification.md": {
+      "upstream_path": "skills/select-error-mitigation/verification.md",
+      "git_blob_sha1": "63c1eb0af989a3961d3c3df8192da95468cede36"
+    },
+    ".agents/skills/select-error-mitigation/zne-gate-folding.md": {
+      "upstream_path": "skills/select-error-mitigation/zne-gate-folding.md",
+      "git_blob_sha1": "26be9906c3b90d5c248eeeee696046258be445c6"
+    },
+    ".agents/skills/select-error-mitigation/zne-pea.md": {
+      "upstream_path": "skills/select-error-mitigation/zne-pea.md",
+      "git_blob_sha1": "f12f07e30dd54aafab67bc10eebbfe060c0c696e"
+    },
+    ".agents/skills/select-sqd-eigensolver/EDITING_THIS_SKILL.md": {
+      "upstream_path": "skills/select-sqd-eigensolver/EDITING_THIS_SKILL.md",
+      "git_blob_sha1": "1565df187acc79dadfa5dbfa6416ac5bc7517641"
+    },
+    ".agents/skills/select-sqd-eigensolver/SKILL.md": {
+      "upstream_path": "skills/select-sqd-eigensolver/SKILL.md",
+      "git_blob_sha1": "3cfd19050d4d8c62db25083904d916a697f10cfa"
+    },
+    ".agents/skills/select-sqd-eigensolver/capabilities-table.md": {
+      "upstream_path": "skills/select-sqd-eigensolver/capabilities-table.md",
+      "git_blob_sha1": "fe3d7e4fc569aa2642a70adedcdceca000c003a1"
+    },
+    ".agents/skills/select-sqd-eigensolver/capabilities.md": {
+      "upstream_path": "skills/select-sqd-eigensolver/capabilities.md",
+      "git_blob_sha1": "9168970b227bd0c8cb8bfffe5dd3266b4aa3def0"
+    },
+    ".agents/skills/select-sqd-eigensolver/references/sbd-complex-hamiltonian-support.md": {
+      "upstream_path": "skills/select-sqd-eigensolver/references/sbd-complex-hamiltonian-support.md",
+      "git_blob_sha1": "230296b84583f29a5c035114afe3c815c3714b00"
+    },
+    ".agents/skills/select-sqd-eigensolver/registry.yaml": {
+      "upstream_path": "skills/select-sqd-eigensolver/registry.yaml",
+      "git_blob_sha1": "9ff4977655be20c513a76acc6dbf5623eddb919e"
+    },
+    ".agents/skills/select-sqd-eigensolver/scripts/render_table.py": {
+      "upstream_path": "skills/select-sqd-eigensolver/scripts/render_table.py",
+      "git_blob_sha1": "f0e6733aa91b8caab85f9059c668c26f1f887c02"
+    },
+    ".agents/skills/simulate-fermionic-systems/SKILL.md": {
+      "upstream_path": "skills/simulate-fermionic-systems/SKILL.md",
+      "git_blob_sha1": "d6584ff4bf02b2f3ed59e0b8f26cb229581a65bf"
+    }
+  }
+}

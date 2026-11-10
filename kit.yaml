@@ -7,6 +7,8 @@ description: >-
   Runs a Qiskit SDK laboratory in DAM with tools for
   Bell, GHZ, Grover, Deutsch–Jozsa, live backend inspection, SamplerV2 QPU
   submission, job results, and locally validated QAOA Max-Cut experiments.
+  Includes official Qiskit skills for Runtime migration, error mitigation,
+  SQD eigensolver selection, and fermionic simulation.
   IBM Quantum credentials are configured by the owner in a hidden terminal prompt.
 category: research
 icon: atom

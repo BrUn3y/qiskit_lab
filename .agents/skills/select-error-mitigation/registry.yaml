@@ -1,0 +1,150 @@
+# Error Mitigation Capability Registry
+#
+# This file is the entry point for the capability selection agent.
+# It enumerates all available error mitigation and suppression capabilities
+# with key selection metadata. For full selection criteria, retrieve the
+# individual capability page at the listed path.
+#
+# Fields:
+#   id:               capability_id (matches page filename)
+#   name:             Display name
+#   category:         baseline | error-suppression | expectation-value-mitigation | sampling-mitigation | post-selection
+#   primitive:        List of supported primitives: estimator, sampler, executor
+#   overhead_class:   none | low | medium | high | exponential
+#   estimate_bias:    unbiased | reduced-bias | not-applicable
+#   resilience_level: Resilience level that activates this technique (null = manual only)
+#   path:             Path to the full capability definition page
+#   external_package: External package the capability always requires
+#   executor_package: Package needed only when the capability is used with the Executor
+
+capabilities:
+
+  - id: no-mitigation
+    name: "No mitigation (baseline)"
+    category: baseline
+    primitive: [estimator, sampler, executor]
+    overhead_class: none
+    estimate_bias: not-applicable
+    resilience_level: 0
+    path: .claude/skills/select-error-mitigation/no-mitigation.md
+
+  - id: dynamical-decoupling
+    name: "Dynamical Decoupling"
+    category: error-suppression
+    primitive: [estimator, sampler, executor]
+    overhead_class: low
+    estimate_bias: not-applicable
+    resilience_level: null
+    path: .claude/skills/select-error-mitigation/dynamical-decoupling.md
+
+  - id: pauli-twirling
+    name: "Pauli Twirling (gate twirling)"
+    category: error-suppression
+    primitive: [estimator, sampler, executor]
+    overhead_class: low
+    estimate_bias: not-applicable
+    resilience_level: null  # auto-enabled for Estimator at resilience_level 2
+    path: .claude/skills/select-error-mitigation/pauli-twirling.md
+
+  - id: trex
+    name: "Twirled Readout Error eXtinction (TREX)"
+    category: expectation-value-mitigation
+    primitive: [estimator, executor]
+    overhead_class: low
+    estimate_bias: reduced-bias
+    resilience_level: 1
+    path: .claude/skills/select-error-mitigation/trex.md
+    executor_package: qiskit-mitigation
+
+  - id: zne-gate-folding
+    name: "Zero-Noise Extrapolation with gate folding"
+    category: expectation-value-mitigation
+    primitive: [estimator, executor]
+    overhead_class: medium
+    estimate_bias: reduced-bias
+    resilience_level: 2
+    path: .claude/skills/select-error-mitigation/zne-gate-folding.md
+    executor_package: qiskit-mitigation
+
+  - id: zne-pea
+    name: "Zero-Noise Extrapolation with Probabilistic Error Amplification (PEA)"
+    category: expectation-value-mitigation
+    primitive: [estimator, executor]
+    overhead_class: high
+    estimate_bias: reduced-bias
+    resilience_level: null
+    path: .claude/skills/select-error-mitigation/zne-pea.md
+    executor_package: qiskit-mitigation
+
+  - id: pec
+    name: "Probabilistic Error Cancellation (PEC)"
+    category: expectation-value-mitigation
+    primitive: [estimator, executor]
+    overhead_class: exponential
+    estimate_bias: unbiased
+    resilience_level: null
+    path: .claude/skills/select-error-mitigation/pec.md
+    executor_package: qiskit-mitigation
+
+  - id: m3
+    name: "Matrix-free Measurement Mitigation (M3)"
+    category: sampling-mitigation
+    primitive: [sampler]
+    overhead_class: low
+    estimate_bias: reduced-bias
+    resilience_level: null
+    path: .claude/skills/select-error-mitigation/m3.md
+    external_package: mthree
+
+# Addon capabilities (external packages; documented in addon repos)
+# Listed here for completeness; agent should note these require external installation.
+
+  - id: pec-slc
+    name: "Probabilistic Error Cancellation with Shaded Lightcones (PEC+SLC)"
+    category: expectation-value-mitigation
+    primitive: [executor]
+    overhead_class: high
+    estimate_bias: reduced-bias  # tunable: unbiased at bias_tolerance=0; bounded bias otherwise
+    resilience_level: null
+    path: .claude/skills/select-error-mitigation/pec-slc.md
+    external_package: qiskit-addon-slc
+
+  - id: obp
+    name: "Operator Backpropagation (OBP)"
+    category: expectation-value-mitigation
+    primitive: [estimator]
+    overhead_class: medium
+    estimate_bias: reduced-bias
+    resilience_level: null
+    path: .claude/skills/select-error-mitigation/obp.md
+    external_package: qiskit-addon-obp
+
+  - id: pna
+    name: "Propagated Noise Absorption (PNA)"
+    category: expectation-value-mitigation
+    primitive: [executor]
+    overhead_class: medium
+    estimate_bias: reduced-bias
+    resilience_level: null
+    path: .claude/skills/select-error-mitigation/pna.md
+    external_package: qiskit-addon-pna
+
+  - id: postselection-non-markovian
+    name: "Post-selection with non-Markovian error checks"
+    category: post-selection
+    primitive: [sampler, executor]
+    overhead_class: high
+    estimate_bias: reduced-bias
+    resilience_level: null
+    path: .claude/skills/select-error-mitigation/postselection-non-markovian.md
+    external_package: qiskit-mitigation
+
+  - id: sqd
+    name: "Sample-based Quantum Diagonalization (SQD)"
+    category: sampling-mitigation
+    primitive: [sampler]
+    overhead_class: high
+    estimate_bias: reduced-bias
+    resilience_level: null
+    path: https://qiskit.github.io/qiskit-addon-sqd/
+    external: true

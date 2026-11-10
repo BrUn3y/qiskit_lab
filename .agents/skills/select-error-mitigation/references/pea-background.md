@@ -1,0 +1,15 @@
+# PEA background
+
+Background for `zne-pea.md`: why PEA amplifies from a learned model, and what that model assumes. Read this when a recommendation has to justify PEA over gate folding, or when deciding whether a device's noise is within PEA's validity domain.
+
+## Why amplify from a learned model (motivation)
+
+Digital amplification — the gate-folding idea of replacing a gate `U` by `U·U†·U` to "triple" its noise — is only faithful for the simplest noise. Kim et al. (arXiv:2108.09197) show that for a realistic Pauli channel, folding a two-qubit gate three times amplifies its noise eigenvalues to `μ²·μ` rather than the required `μ³`, and that for non-uniform Pauli channels "strong deviations from the desired behavior can be constructed," so the method "can lead to uncontrolled estimates" and "arbitrarily deviate from the desired result when only slightly more complicated noise models are considered." PEA exists to remove exactly this confound: it learns the actual (twirled) Pauli noise channel of each layer and injects noise scaled from that learned model, so the amplification is faithful to the real noise rather than assuming folding produces the right power. That is the core reason to prefer PEA over gate folding once the noise structure is non-trivial — not merely "more accurate," but *unbiased in the amplification step* where folding is not.
+
+## What the learned model assumes (validity domain)
+
+PEA is only as good as the sparse Pauli-Lindblad model it amplifies, and that model (van den Berg et al., Nat. Phys. 19, 2023) carries assumptions that define where PEA is trustworthy:
+
+- **Layer structure.** The noise is learned *per layer*, and each learned layer "accurately captures the noise associated with layers of two-qubit Clifford gates, including crosstalk, when combined with random Pauli twirls." The technique therefore fits circuits built from a few **fixed, repeating layers of self-inverse two-qubit Clifford gates** (cz/cx) — exactly the structure of a Trotterized simulation. Learning exploits repetition: the twirled layer is run to increasing depth and Pauli fidelities are read off the decay, "robust to state-preparation and measurement (SPAM) errors." A circuit with many distinct, non-repeating entangling layers has no such economy — each unique layer is a separate learning cost.
+- **Locality / sparsity.** "Sparse" means the model keeps only weight-1 Paulis and weight-2 Paulis on **connected (coupling-map-adjacent) qubit pairs**, on the assumption that gate noise "can be expected to have limited range and therefore be negligible beyond some local neighborhood." If the real device has significant **long-range or weight-≥3 correlated noise** not in that generator set, the sparse model cannot represent it and the amplification (and any PEC) becomes biased — the error bound explicitly assumes the channel is representable by the model's Pauli set.
+- **Noise stationarity.** The model is characterized once and reused for the amplified runs, so it assumes the noise does not drift between learning and execution (see the drift `avoid_when` in `zne-pea.md`).

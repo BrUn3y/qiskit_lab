@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import sys
@@ -38,6 +39,42 @@ def test_catalog_entry_matches_official_schema():
     catalog = yaml.safe_load((ROOT / "catalog.yaml").read_text())
     jsonschema.Draft202012Validator(schema).validate(catalog)
     assert catalog["kits"] == [{"url": "https://github.com/BrUn3y/qiskit_lab"}]
+
+
+def test_official_skills_are_discoverable_and_packaged_with_unmodified_resources(deploy, tmp_path):
+    # Exercise the actual tracked-file export used by DAM's CLI deployment.
+    deploy.copy_tracked(tmp_path)
+    source = json.loads((tmp_path / '.agents/qiskit-skills.json').read_text())
+    kit = yaml.safe_load((tmp_path / 'kit.yaml').read_text())
+    skills_root = tmp_path / kit['bundledSkills']['path']
+    names = {
+        'migrate-qiskit-ibm-runtime', 'select-error-mitigation',
+        'select-sqd-eigensolver', 'simulate-fermionic-systems',
+    }
+    assert source['repository'] == 'https://github.com/Qiskit/skills'
+    assert len(source['revision']) == 40
+    assert source['license'] == 'Apache-2.0'
+    assert {skill['name'] for skill in source['skills']} == names
+    instructions = (tmp_path / 'AGENTS.md').read_text()
+    readme = (tmp_path / 'README.md').read_text()
+    assert source['repository'] in readme
+    for skill in source['skills']:
+        skill_path = skills_root / skill['name'] / 'SKILL.md'
+        metadata = yaml.safe_load(skill_path.read_text().split('---', 2)[1])
+        assert metadata['name'] == skill['name']
+        assert metadata['description']
+        relative = skill_path.relative_to(tmp_path).as_posix()
+        assert relative in instructions and relative in readme
+        # Include every supporting file, not only the skill's entry point.
+        packaged = {path.relative_to(tmp_path).as_posix() for path in skill_path.parent.rglob('*') if path.is_file()}
+        recorded = {path for path in source['files'] if path.startswith(skill['path'] + '/')}
+        assert packaged == recorded
+    for relative, upstream in source['files'].items():
+        content = (tmp_path / relative).read_bytes()
+        blob = hashlib.sha1(f'blob {len(content)}\0'.encode() + content, usedforsecurity=False).hexdigest()
+        assert blob == upstream['git_blob_sha1'], f'Upstream file changed or was not packaged: {relative}'
+    assert 'Apache License' in (tmp_path / source['license_path']).read_text()
+    assert (skills_root / 'qiskit-lab/SKILL.md').is_file()
 
 
 def test_native_reporting_schedule_runs_only_the_installed_read_only_precheck(deploy):
