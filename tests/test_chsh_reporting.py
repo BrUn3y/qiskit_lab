@@ -90,9 +90,21 @@ def test_simulation_noise_reference_and_repeated_histogram_warning(receipt, tmp_
 
 def test_missing_execution_type_is_not_labelled_as_local_simulation(receipt, tmp_path):
     receipt.pop('hardware')
+    receipt.pop('title')
     html = write_report(receipt, tmp_path).read_text()
     assert 'Execution type unavailable' in html
     assert 'Local simulation' not in html
+    assert 'Local quantum experiment' not in html
+
+
+def test_configuration_order_preserves_positional_seed_provenance(receipt):
+    receipt['correlators'].reverse()
+    labels = [row['label'] for row in receipt['correlators']]
+    receipt['sampling'] = {'configuration_seeds': [101, 102, 103, 104]}
+    prepare_chsh_report(receipt)
+    assert [row['label'] for row in receipt['correlators']] == labels
+    assert receipt['sampling']['configuration_seeds'] == [101, 102, 103, 104]
+    assert receipt['chsh_value'] == pytest.approx(2.2)
 
 
 @pytest.mark.parametrize('counts', [

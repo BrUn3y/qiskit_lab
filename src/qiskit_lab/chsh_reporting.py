@@ -29,8 +29,9 @@ def prepare_chsh_report(data):
     if data.get("noise_model") is not None and not isinstance(data["noise_model"], dict):
         raise ValueError("The recorded CHSH noise model must be a JSON object.")
     rows = []
-    for label in LABELS:
-        row = next(row for row in source if row["label"] == label).copy()
+    # Preserve order so positional seed provenance and source circuits stay aligned.
+    for original in source:
+        row = original.copy()
         counts = row.get("counts")
         if (not isinstance(counts, dict) or not counts or not set(counts) <= BITSTRINGS
                 or any(type(value) is not int or value < 0 for value in counts.values())):

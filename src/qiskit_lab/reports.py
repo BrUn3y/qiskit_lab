@@ -175,6 +175,16 @@ def _chsh(data):
     Imported receipts are not independently verified with IBM.</p></section>'''
 
 
+def _report_title(data):
+    if data.get("title"):
+        return str(data["title"])
+    if "correlators" in data:
+        return "CHSH Bell inequality experiment"
+    if data.get("hardware") is True:
+        return "IBM Quantum execution"
+    return "Local quantum experiment" if data.get("hardware") is False else "Quantum experiment"
+
+
 def report_filename(data, directory):
     """Identify a report by its recorded job/run and circuit, without unsafe paths."""
     def slug(value, fallback, limit=80):
@@ -182,7 +192,7 @@ def report_filename(data, directory):
         return re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-")[:limit].rstrip("-") or fallback
 
     identifier = data.get("job_id") or data.get("run_id") or Path(directory).name
-    title = data.get("title") or ("IBM Quantum execution" if data.get("hardware") else "Local quantum experiment")
+    title = _report_title(data)
     return f"{slug(identifier, 'run')}-{slug(str(title).lower(), 'quantum-circuit')}.html"
 
 
@@ -196,7 +206,7 @@ def write_report(data, directory):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / report_filename(data, directory)
-    title = str(data.get("title") or ("IBM Quantum execution" if data.get("hardware") else "Local quantum experiment"))
+    title = _report_title(data)
     data.update(report_path=str(path), report_filename=path.name, report_title=title)
     raw = ([row["counts"] for row in data["correlators"]] if "correlators" in data else data.get("counts", []))
     counts = [raw] if isinstance(raw, dict) else raw
