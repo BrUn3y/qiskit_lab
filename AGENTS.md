@@ -8,6 +8,25 @@ The command wrapper also ensures the locked environment is installed.
 Read `.agents/skills/qiskit-lab/SKILL.md` before quantum work. For first-time
 configuration, follow `ONBOARDING.md`. `CLAUDE.md` points here too.
 
+Also use the bundled official Qiskit skills when the request matches their scope.
+Read the matching `SKILL.md` before recommending an approach or changing code,
+then load its referenced registries, guides and scripts as needed. Combine skills
+when a workflow spans their scopes; do not load every reference for every task.
+
+| Task | Official skill |
+| --- | --- |
+| Migrate or upgrade qiskit-ibm-runtime code, primitives or execution APIs | `.agents/skills/migrate-qiskit-ibm-runtime/SKILL.md` |
+| Select or configure error mitigation and suppression | `.agents/skills/select-error-mitigation/SKILL.md` |
+| Choose or integrate an SQD diagonalization solver | `.agents/skills/select-sqd-eigensolver/SKILL.md` |
+| Map or simulate fermionic Hamiltonians, encodings and circuits | `.agents/skills/simulate-fermionic-systems/SKILL.md` |
+
+These skills supplement the Qiskit Lab execution and reporting workflow. Ground
+examples in the installed SDK versions. Optional fermionic/SQD packages are not
+part of the base environment; install them only as needed for the requested task.
+Skill examples do not authorize QPU submissions or bypass this project's
+credential, job-tracking or reporting rules. Provenance and the pinned upstream
+revision are recorded in `.agents/qiskit-skills.json`.
+
 At the beginning of every new chat, run `scripts/dam/quantum onboarding` before
 answering the first user message. Perform startup checks silently; do not narrate
 file reads or internal protocols. Before the first visible reply, use tool calls

@@ -72,13 +72,43 @@ HTML report inside DAM.
 
 ![QAOA circuit and scientific dashboard displayed inside DAM](docs/images/dam-qaoa-circuit-dashboard.png)
 
+## Official Qiskit skills
+
+The agent includes the [official Qiskit AI Skills](https://github.com/Qiskit/skills)
+alongside the project-specific `qiskit-lab` skill. It reads the matching skill
+before giving guidance or developing code for these workflows:
+
+| Skill | Used for |
+| --- | --- |
+| [migrate-qiskit-ibm-runtime](.agents/skills/migrate-qiskit-ibm-runtime/SKILL.md) | Migrating Runtime code, primitives and execution APIs. |
+| [select-error-mitigation](.agents/skills/select-error-mitigation/SKILL.md) | Selecting and configuring error mitigation and suppression. |
+| [select-sqd-eigensolver](.agents/skills/select-sqd-eigensolver/SKILL.md) | Choosing and integrating the diagonalization solver in SQD. |
+| [simulate-fermionic-systems](.agents/skills/simulate-fermionic-systems/SKILL.md) | Fermionic operators, encodings, circuit construction and simulation. |
+
+The complete skill directories, including their registries, reference guides and
+helper scripts, are bundled under `.agents/skills/`. DAM advertises them through
+`kit.yaml`; the CLI deployment fallback uploads them with the tracked source.
+The routing instructions in `AGENTS.md` also make them available to agents that
+read project instructions directly. A new conversation in an updated checkout
+can use them without downloading the upstream repository at runtime.
+
+The bundled copy is pinned to Qiskit/skills commit
+[`0888fb7`](https://github.com/Qiskit/skills/commit/0888fb799b8a3972da65c2c0ea1965e27957111d).
+[Source metadata](.agents/qiskit-skills.json) records the upstream revision and
+file hashes; the [upstream Apache 2.0 license](.agents/skills/QISKIT-SKILLS-LICENSE.txt)
+is preserved. These skills provide workflow guidance. Optional packages such as
+`qiskit-fermions`, SQD add-ons and external solvers are installed when a task
+needs them, rather than added to the base SDK environment by installing the kit.
+Existing DAM agents need a checkout update to receive these files; see
+[Update an existing deployment](#update-an-existing-deployment).
+
 ## Install as a DAM starter kit
 
 The root [`kit.yaml`](kit.yaml) follows the
 [official DAM starter-kit format](https://github.com/dam-agents/dam-starter-kits).
 It seeds this repository at the catalog's resolved commit, installs the locked
-Qiskit SDK environment, advertises the bundled `qiskit-lab` skill, and declares
-the two-minute job-report schedule. It uses the platform's default model and
+Qiskit SDK environment, advertises `qiskit-lab` and the four official Qiskit skills,
+and declares the two-minute job-report schedule. It uses the platform's default model and
 harness selection, plus the IBM network hosts the SDK needs.
 
 The platform runs `bash scripts/dam/install.sh` inside the seeded checkout before
@@ -444,5 +474,8 @@ The JSON paths use `/results`; open the corresponding files under
 This repository currently has no project-level license file. Do not infer a
 license from the bundled third-party assets: the notices
 in [assets/NOTICE.md](src/qiskit_lab/assets/NOTICE.md) cover those assets only.
+The bundled official Qiskit skills have their own
+[Apache 2.0 license](.agents/skills/QISKIT-SKILLS-LICENSE.txt); it applies to those
+third-party skills, not to the rest of this repository.
 The repository owner must clarify licensing before others rely on permission
 to redistribute or reuse the project.
