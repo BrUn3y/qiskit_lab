@@ -18,6 +18,8 @@ from importlib.resources import files
 from pathlib import Path
 from urllib.parse import quote
 
+from qiskit_lab.chsh_reporting import prepare_chsh_report
+
 CARBON_VERSION = "1.119.0"
 
 
@@ -136,6 +138,43 @@ def _optimization(data):
                     ('best_bitstring', 'Best sampled solution'), ('best_cut', 'Best sampled cut')])}</section>'''
 
 
+def _chsh(data):
+    if "correlators" not in data:
+        return ""
+    rows = []
+    terms = []
+    for index, row in enumerate(data["correlators"]):
+        label = escape(row["label"])
+        sign = row["sign_in_chsh"]
+        terms.append(("− " if sign < 0 else ("+ " if index else "")) + f"E({label})")
+        angles = [f"{math.degrees(row[key]):.1f}°" if row.get(key) is not None else "Not available"
+                  for key in ("alice_angle_rad", "bob_angle_rad")]
+        theory = f'{row["theory"]:+.4f}' if row.get("theory") is not None else "Not available"
+        rows.append(f'<tr><td>{label}</td><td>{angles[0]}</td><td>{angles[1]}</td><td>{sign:+d}</td>'
+                    f'<td>{row["correlator"]:+.4f} ± {row["uncertainty"]:.4f}</td><td>{theory}</td>'
+                    f'<td>{row["shots"]:,}</td></tr>')
+    warnings = ''.join(f'<p class="muted">{escape(warning)}</p>' for warning in data["sampling_warnings"])
+    labels = [("chsh_ideal", "Ideal theoretical S"), ("classical_bound", "Classical bound |S|"),
+              ("tsirelson_bound", "Quantum maximum |S|")]
+    model = data.get("noise_model") or {}
+    if model.get("type") == "single_qubit_depolarizing" and data.get("hardware") is False:
+        labels.append(("chsh_theory", "Noise-model prediction S"))
+    comparison = "Estimated |S| exceeds 2." if data["violated"] else "Estimated |S| does not exceed 2."
+    return f'''<section class="panel"><p class="eyebrow">Bell inequality analysis</p><h2>CHSH measurement correlators</h2>
+    <p>Recomputed from observed counts: <strong>S = {data['chsh_value']:+.4f} ± {data['chsh_uncertainty']:.4f}</strong>.
+    {comparison}</p><p class="muted">Independent-shot standard error, ±1σ. {escape(data['chsh_uncertainty_assumption'])}</p>
+    {warnings}<p>Sign convention: S = {' '.join(terms)}</p>
+    <p class="muted">E = (N00 + N11 − N01 − N10) / N. Angles use the convention recorded by the experiment.</p>
+    <div class="table-scroll"><table class="cds--data-table cds--data-table--md">
+    <caption class="sr-only">CHSH correlations and observed shots by configuration</caption>
+    <thead><tr><th scope="col">Config</th><th scope="col">Alice θ</th><th scope="col">Bob θ</th>
+    <th scope="col">Sign</th><th scope="col">E ± σ</th><th scope="col">Recorded theoretical E</th>
+    <th scope="col">Observed shots</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
+    {_details(data, labels)}{_details(model, [('type', 'Recorded noise model'), ('parameter_p', 'Noise parameter p')])}
+    <p class="muted">Ideal theory is a reference, not a calibrated prediction of hardware noise.
+    Imported receipts are not independently verified with IBM.</p></section>'''
+
+
 def report_filename(data, directory):
     """Identify a report by its recorded job/run and circuit, without unsafe paths."""
     def slug(value, fallback, limit=80):
@@ -151,17 +190,34 @@ def write_report(data, directory):
     """Write a standalone report atomically; only terminal runs receive reports."""
     if data.get("status") not in {"DONE", "ERROR", "CANCELLED"}:
         raise ValueError("A completion report requires a terminal job state.")
+    if "hardware" in data and type(data["hardware"]) is not bool:
+        raise ValueError("The hardware field must be a boolean when provided.")
+    prepare_chsh_report(data)
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / report_filename(data, directory)
     title = str(data.get("title") or ("IBM Quantum execution" if data.get("hardware") else "Local quantum experiment"))
     data.update(report_path=str(path), report_filename=path.name, report_title=title)
-    raw = data.get("counts", [])
+    raw = ([row["counts"] for row in data["correlators"]] if "correlators" in data else data.get("counts", []))
     counts = [raw] if isinstance(raw, dict) else raw
     measured = sum(sum(publication.values()) for publication in counts)
     state_count = sum(len(publication) for publication in counts)
     job_id = str(data.get("job_id") or data.get("run_id") or directory.name)
-    hardware = data.get("hardware", False)
+    hardware = data.get("hardware")
+    execution_label = ("IBM Quantum hardware" if hardware is True else
+                       "Local simulation" if hardware is False else "Execution type unavailable")
+    displayed_id = _display(data.get("job_id")) if hardware is True else job_id
+    summary = (f'<div><p>Observed shots</p><strong>{measured:,}</strong></div>'
+               f'<div><p>Circuit qubits</p><strong>{escape(_display(data.get("qubits")))}</strong></div>'
+               f'<div><p>Circuit depth</p><strong>{escape(_display(data.get("depth")))}</strong></div>'
+               f'<div><p>Observed states</p><strong>{state_count:,}</strong></div>')
+    if "correlators" in data:
+        shot_counts = set(data["observed_shots_per_configuration"])
+        value = f"{next(iter(shot_counts)):,}" if len(shot_counts) == 1 else "Varies by configuration"
+        summary = (f'<div><p>CHSH value S</p><strong>{data["chsh_value"]:+.4f}</strong></div>'
+                   f'<div><p>Independent-shot standard error ±1σ</p><strong>{data["chsh_uncertainty"]:.4f}</strong></div>'
+                   f'<div><p>Observed shots per configuration</p><strong>{value}</strong></div>'
+                   f'<div><p>Observed shots</p><strong>{measured:,}</strong></div>')
     status = data["status"]
     generated = datetime.now(UTC).isoformat()
     downloads = _download("Download result JSON", f"{path.stem}-results.json", _json(data))
@@ -208,6 +264,9 @@ def write_report(data, directory):
     metrics = _details(data.get("metrics", {}), [("timestamps", "IBM job timestamps (UTC)"),
                        ("usage", "IBM reported usage"), ("executions", "Executions")])
     status_label = {"DONE": "Completed", "ERROR": "Failed", "CANCELLED": "Cancelled"}[status]
+    provenance = ('<p class="muted caption">Generated offline from an imported receipt. '
+                  'Job authenticity and status were not verified with IBM.</p>'
+                  if data.get("report_source") == "imported_receipt_not_verified_online" else "")
     ibm_link = (f'<a class="cds--link" href="https://quantum.cloud.ibm.com/jobs/{quote(job_id, safe="")}" '
                 'target="_blank" rel="noopener noreferrer">Open in IBM Quantum ↗</a>') if hardware else ""
     script_data = _json(counts).replace('&', r'\u0026').replace('<', r'\u003c').replace('>', r'\u003e')
@@ -223,22 +282,20 @@ def write_report(data, directory):
     <span class="header-note">Execution report</span></header>
     <main id="main"><section class="hero"><div class="hero-top"><p class="eyebrow">Quantum laboratory / Run report</p>
     <span class="cds--tag cds--tag--{'green' if status == 'DONE' else 'red'}">{status_label}</span></div>
-    <h1>{escape(title)}</h1><p class="subtitle">{'IBM Quantum hardware' if hardware else 'Local simulation'}
+    <h1>{escape(title)}</h1><p class="subtitle">{execution_label}
     <span aria-hidden="true"> · </span> {escape(str(data.get('backend', 'Not available')))}</p>
-    <p class="run-id">{'Job' if hardware else 'Run'} <code>{escape(job_id)}</code></p>
+    <p class="run-id">{'Job' if hardware else 'Run'} <code>{escape(displayed_id)}</code></p>
     <div class="downloads">{downloads}</div></section>
     <section class="metrics" aria-label="Run summary">
-    <div><p>Observed shots</p><strong>{measured:,}</strong></div>
-    <div><p>Circuit qubits</p><strong>{escape(_display(data.get('qubits')))}</strong></div>
-    <div><p>Circuit depth</p><strong>{escape(_display(data.get('depth')))}</strong></div>
-    <div><p>Observed states</p><strong>{state_count:,}</strong></div></section>
-    <div class="report-grid"><div class="results">{publications}</div>
+    {summary}</section>
+    {_chsh(data)}<div class="report-grid"><div class="results">{publications}</div>
     <aside class="panel execution"><p class="eyebrow">Execution context</p><h2>Job details</h2>
     {_details(data, [('status', 'Runtime status'), ('backend', 'Backend'), ('shots', 'Requested shots per circuit'),
         ('created_at', 'Submitted / started (UTC)'), ('completed_at', 'Completed (UTC)'), ('queried_at', 'Last queried (UTC)'),
         ('duration_seconds', 'Local elapsed seconds'), ('max_execution_time', 'QPU execution limit (seconds)'),
         ('isa_qubits', 'ISA circuit qubits'), ('isa_depth', 'ISA circuit depth'), ('gate_counts', 'Source gate counts'),
         ('isa_gate_counts', 'ISA gate counts'), ('seed', 'Simulation seed'), ('versions', 'SDK versions')])}
+    {provenance}
     {metrics}{ibm_link}<p class="muted caption">Missing fields are unavailable from this receipt or IBM.
     Observed shots describe returned counts, separately from requested shots. QPU usage is not a cost estimate.</p></aside></div>
     {_optimization(data)}<section class="panel"><p class="eyebrow">Reproducibility</p><h2>Circuit and source</h2>

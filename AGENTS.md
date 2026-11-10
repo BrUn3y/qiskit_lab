@@ -29,6 +29,17 @@ All quantum operations use Qiskit directly. The package is `src/qiskit_lab`;
 it includes circuit execution, backend inspection, job retrieval, deterministic
 QAOA Max-Cut, PNG visualizations, and automatic Carbon HTML reports. Never invent results.
 
+For custom CHSH experiments, use the bundled report generator rather than writing
+an ad hoc HTML template: `scripts/dam/quantum report --input PUBLIC_RESULT.json`.
+Record terminal status, an explicit `hardware` boolean, backend and job/run ID,
+and four labelled `correlators` with counts and `sign_in_chsh`. The report derives
+observed shots, correlations and uncertainty from counts. Missing metadata must
+remain unavailable; never default it to zero or label hardware as a simulation.
+Use `qiskit_lab.sampling.sample_configurations` once with all local measurement
+configurations and retain its seed provenance. Never reset the same integer seed
+for each configuration. CHSH error bars assume independent sampling and describe
+shot noise only; ideal theory is not a calibrated hardware-noise prediction.
+
 A request for real IBM Quantum hardware authorizes one submission. Use
 `--hardware`, preserve and return the job ID, backend, shots and artifact paths.
 Simulation is the default. A named backend also requires `--hardware`.

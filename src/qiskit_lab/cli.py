@@ -367,6 +367,29 @@ def compare(args):
     return response
 
 
+def render_report(args):
+    """Regenerate a report from a public receipt without contacting IBM."""
+    try:
+        response = json.loads(args.input.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise UserError("Cannot read the input receipt; provide a valid public JSON result file.") from error
+    if not isinstance(response, dict):
+        raise UserError("The input receipt must be a JSON object.")
+    # Validate before creating output files; preserve the original input receipt.
+    if response.get("status") not in {"DONE", "ERROR", "CANCELLED"}:
+        raise UserError("A completion report requires a terminal job state in the input receipt.")
+    directory = artifact_dir(args.output_dir)
+    response.pop("report_error", None)
+    response["report_source"] = "imported_receipt_not_verified_online"
+    response["artifacts"] = str(directory)
+    try:
+        write_report(response, directory)
+    except ValueError as error:
+        raise UserError(str(error)) from error
+    save_json(directory / "report.json", response)
+    return response
+
+
 def bounded_integer(minimum, maximum):
     def parse(value):
         number = int(value)
@@ -418,6 +441,9 @@ def parser():
     comparison.add_argument("--output", type=Path)
     comparison.add_argument("--allow-unverified", action="store_true",
                             help="Allow legacy receipts without circuit/measurement metadata; report a warning")
+    report = commands.add_parser("report", help="Regenerate Carbon HTML offline from a saved public result JSON")
+    report.add_argument("--input", type=Path, required=True)
+    report.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
     return cli
 
 
@@ -438,6 +464,8 @@ def main(argv=None):
             result = inspect_job(args)
         elif args.command == "qaoa":
             result = qaoa(args)
+        elif args.command == "report":
+            result = render_report(args)
         elif args.command == "poll-jobs":
             from qiskit_lab.job_tracking import poll_jobs
 
