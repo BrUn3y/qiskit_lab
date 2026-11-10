@@ -257,6 +257,51 @@ npm run build
 Third-party licenses and exact asset versions are documented in
 `src/qiskit_lab/assets/NOTICE.md`.
 
+### Regenerate a saved report offline
+
+For custom experiments, use the bundled Carbon report generator instead of
+maintaining a separate HTML template:
+
+```sh
+scripts/dam/quantum report --input PUBLIC_RESULT.json
+```
+
+Provide a public result receipt, never an SDK account or credential file. The
+receipt must include terminal `status` (`DONE`, `ERROR` or `CANCELLED`). Record
+`hardware` as a JSON boolean and preserve `backend`, hardware `job_id` or local
+`run_id`. Missing execution type is shown as unavailable, not inferred to be a
+simulation. The command preserves the input and writes new HTML and `report.json`
+under `artifacts/dam/`; it does not contact IBM or submit work. An imported
+receipt is labelled as not verified online. Existing reports are not overwritten.
+
+CHSH receipts additionally contain four `correlators` labelled `ab`, `ab'`,
+`a'b`, `a'b'`, each with two-bit `counts` and `sign_in_chsh` (+1 or -1, with an odd
+number of negative signs). Optional `alice_angle_rad`, `bob_angle_rad` and
+`theory` preserve the experiment's measurement convention and reference values.
+The renderer recomputes correlations, S, observed shot totals and approximate
+standard errors from the counts, replacing stale statistical summaries. Requested
+shots remain separate; unequal observed shot counts are listed per configuration.
+`chsh_ideal` is labelled as ideal theory. A hardware receipt with
+`noise_model.type: real_hardware_noise` does not present an ideal reference as a
+calibrated noise-model prediction.
+
+CHSH error bars assume independent shots within and across configurations and
+exclude systematic hardware errors. Identical histograms trigger a sampling
+review warning; they do not prove a seed error, and different histograms do not
+prove independence. For local experiments, sample all configurations together:
+
+```python
+from qiskit_lab.sampling import sample_configurations
+
+counts, sampling = sample_configurations(circuits, shots=8192, seed=42)
+```
+
+This helper assigns each circuit a distinct reproducible seed using NumPy
+SeedSequence. Store `sampling` in the receipt. Do not call the helper separately
+with the same root seed for each configuration. Adoption is required in custom
+experiment scripts; regenerating an old report cannot repair correlated samples.
+The helper supports measured statevector-compatible circuits of up to 20 qubits.
+
 ## Local examples
 
 From the repository root, after `uv sync --locked`:
