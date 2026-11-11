@@ -15,6 +15,8 @@ from qiskit import QuantumCircuit
 from qiskit.qasm3 import dumps as qasm3_dumps
 from qiskit.quantum_info import Statevector
 
+from qiskit_lab.errors import failure_context
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -190,18 +192,19 @@ def _render_dashboard(
 
 def render_qaoa_dashboard(result: QAOAExperimentResult) -> Path:
     """Render an already computed experiment without sampling or optimizing again."""
-    path = _render_dashboard(
-        node_count=result.node_count,
-        edges=result.edges,
-        best_bitstring=result.best_bitstring,
-        counts=result.counts,
-        expected_cut=result.expected_cut,
-        exact_cut=result.exact_cut,
-        approximation_ratio=result.approximation_ratio,
-        trace=list(result.optimization_trace),
-    )
-    if not path.is_file():
-        raise FileNotFoundError("Dashboard renderer did not create a file.")
+    with failure_context("rendering"):
+        path = _render_dashboard(
+            node_count=result.node_count,
+            edges=result.edges,
+            best_bitstring=result.best_bitstring,
+            counts=result.counts,
+            expected_cut=result.expected_cut,
+            exact_cut=result.exact_cut,
+            approximation_ratio=result.approximation_ratio,
+            trace=list(result.optimization_trace),
+        )
+        if not path.is_file():
+            raise FileNotFoundError("Dashboard renderer did not create a file.")
     return path
 
 
@@ -215,7 +218,8 @@ def run_maxcut_qaoa(
     """
     if shots < 1:
         raise ValueError("QAOA requires at least one shot.")
-    node_count, edges = parse_maxcut_graph(request)
+    with failure_context("local_input"):
+        node_count, edges = parse_maxcut_graph(request)
     best_expectation = -1.0
     best_gamma = 0.0
     best_beta = 0.0

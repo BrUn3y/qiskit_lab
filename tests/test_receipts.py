@@ -272,6 +272,7 @@ def test_invalid_tracking_is_preserved_reported_and_does_not_block_other_jobs(tm
     result = job_tracking.poll_jobs(args)
     assert [event["job_id"] for event in result["notifications"]] == ["healthy"]
     assert result["errors"][0]["error"] == "ReceiptValidationError"
+    assert result["errors"][0]["error_category"] == "local_input"
     assert "non-negative" in result["errors"][0]["next_step"]
     assert bad_path.read_bytes() == original
     assert not list(bad_path.parent.glob("*.html"))

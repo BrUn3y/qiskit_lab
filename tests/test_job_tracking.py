@@ -163,13 +163,15 @@ def test_terminal_poll_is_durable_idempotent_and_acknowledged_offline(monkeypatc
 @pytest.mark.parametrize("status", ["QUEUED", "RUNNING", "VALIDATING"])
 def test_nonterminal_poll_never_waits_for_results_or_notifies(monkeypatch, tmp_path, status):
     job, service = sdk_job(monkeypatch, status)
-    path = receipt(tmp_path, poll_error="ConnectionError")
+    path = receipt(tmp_path, poll_error="ConnectionError", poll_error_category="ibm", poll_next_step="old guidance")
     result = job_tracking.poll_jobs(poll_args(tmp_path))
     assert result == {"checked": 1, "notifications": [], "errors": []}
     saved = json.loads(path.read_text())
     assert saved["status"] == status
     assert saved["queried_at"] == NOW
     assert "poll_error" not in saved
+    assert "poll_error_category" not in saved
+    assert "poll_next_step" not in saved
     assert "report_path" not in saved
     assert not list(tmp_path.rglob("*.html"))
     job.result.assert_not_called()
@@ -186,6 +188,8 @@ def test_download_failure_is_redacted_persisted_and_retried_with_a_bounded_timeo
     saved = json.loads(path.read_text())
     assert saved["job_id"] == "tracked-job"
     assert saved["result_error"] == "TimeoutError"
+    assert saved["result_error_category"] == "ibm"
+    assert "same job ID" in saved["next_step"]
     assert "counts" not in saved
     assert "private IBM request" not in path.read_text()
     assert not list(tmp_path.rglob("*.html"))
@@ -194,6 +198,7 @@ def test_download_failure_is_redacted_persisted_and_retried_with_a_bounded_timeo
     assert len(second["notifications"]) == 1
     saved = json.loads(path.read_text())
     assert "result_error" not in saved
+    assert "result_error_category" not in saved
     assert "next_step" not in saved
     assert saved["counts"] == [{"00": 32, "11": 32}]
     assert job.result.call_count == service.job.call_count == 2
@@ -208,6 +213,8 @@ def test_render_failure_preserves_counts_and_is_retried_before_notification(monk
     assert job_tracking.poll_jobs(poll_args(tmp_path))["notifications"] == []
     saved = json.loads(path.read_text())
     assert saved["report_error"] == "OSError"
+    assert saved["report_error_category"] == "filesystem"
+    assert "permissions" in saved["report_next_step"]
     assert saved["counts"] == [{"00": 32, "11": 32}]
     assert "private path" not in path.read_text()
     monkeypatch.setattr(cli, "write_report", render)
@@ -231,7 +238,11 @@ def test_failed_query_is_redacted_rotated_and_does_not_block_a_healthy_job(monke
     service.job.side_effect = lookup
     result = job_tracking.poll_jobs(poll_args(tmp_path))
     assert result["checked"] == 2
-    assert result["errors"] == [{"job_id": "failed-job", "error": "ConnectionError"}]
+    error, = result["errors"]
+    assert error["job_id"] == "failed-job"
+    assert error["error"] == "ConnectionError"
+    assert error["error_category"] == "ibm"
+    assert "network access" in error["next_step"]
     assert [entry["job_id"] for entry in result["notifications"]] == ["tracked-job"]
     saved = json.loads(failed.read_text())
     assert saved["queried_at"] == NOW

@@ -8,6 +8,8 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
+from qiskit_lab.errors import failure_context
+
 PROJECT_TAG = "qiskit-lab-dam"
 RUN_TAG_PREFIX = "qiskit-lab-run-"
 INTENT_FILE = "submission-intent.json"
@@ -121,8 +123,9 @@ def submit_once(sampler, circuit, receipt, directory):
                                    "next_step": "Cannot persist submission intent. Fix local storage before submitting."}
                                   ) from error
         try:
-            job = sampler.run([circuit], shots=receipt["shots"])
-            accept(receipt, job.job_id())
+            with failure_context("ibm", submission_attempted=True):
+                job = sampler.run([circuit], shots=receipt["shots"])
+                accept(receipt, job.job_id())
         except Exception as error:  # noqa: BLE001 - Never retry or expose SDK exception bodies
             receipt["submission"]["error"] = type(error).__name__
             response = {**receipt, "error": type(error).__name__}
@@ -208,11 +211,12 @@ def recover_submission(args):
         try:
             # Two matches suffice to detect ambiguity; no first-match selection,
             # pending-state filter, time window, or incomplete single-page scan.
-            jobs = runtime_service().jobs(limit=2, backend_name=intent["backend"],
-                                          job_tags=intent["submission"]["job_tags"])
-            matches = [job.job_id() for job in jobs]
-            if any(not isinstance(job_id, str) or not job_id.strip() for job_id in matches):
-                raise RecoveryError("IBM returned an unusable matching job ID.")
+            with failure_context("ibm"):
+                jobs = runtime_service().jobs(limit=2, backend_name=intent["backend"],
+                                              job_tags=intent["submission"]["job_tags"])
+                matches = [job.job_id() for job in jobs]
+                if any(not isinstance(job_id, str) or not job_id.strip() for job_id in matches):
+                    raise RecoveryError("IBM returned an unusable matching job ID.")
         except Exception as error:  # noqa: BLE001 - An unavailable query is not evidence of no job
             raise SubmissionError({**receipt, "error": type(error).__name__, "recovery_status": "query_error",
                                    "next_step": UNKNOWN_NEXT_STEP}) from error
