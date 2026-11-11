@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "upstream_revision": "0888fb799b8a3972da65c2c0ea1965e27957111d",
+  "safety_context": "Offline review only. Do not run onboarding, inspect credentials or accounts, construct an authenticated service, query IBM, submit QPU work, install packages, deploy, merge or publish. Read the applicable project instructions and bundled skills. Give a grounded review or plan, not an implementation. External documentation is unavailable in this evaluation; identify any resulting verification limit.",
+  "cases": [
+    {
+      "id": "migration-job-status",
+      "prompt": "Review an old qiskit-ibm-runtime 0.26 job display for a target environment with Runtime 0.51.0. It says `if job.status() is JobStatus.DONE: show(job.program_id)` and also calls `job.queue_info()`. Explain the relevant migration and what information cannot be preserved. Do not execute the snippet.",
+      "expected_skills": ["migrate-qiskit-ibm-runtime"],
+      "resources": [
+        {"path": ".agents/skills/migrate-qiskit-ibm-runtime/registry.yaml"},
+        {"path": ".claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md", "heading": "## Queue and job-management helpers"}
+      ],
+      "registry_checks": [
+        {"path": ".agents/skills/migrate-qiskit-ibm-runtime/registry.yaml", "collection": "changes", "match": {"id": "job-management-removed"}, "links": {"guide": ".claude/skills/migrate-qiskit-ibm-runtime/migrate-non-primitive-apis.md"}}
+      ],
+      "rubric": [
+        "Read the migration entry point and registry, then the referenced local guide, resolving its historical .claude prefix to the bundled .agents directory.",
+        "Explain string equality rather than identity or JobStatus enum comparison, and the program_id to primitive_id rename.",
+        "Explain that queue status is not queue position or ETA; do not invent queue_info replacements from usage or metrics.",
+        "State that no SDK or service behavior was executed and no complete primitive migration was established."
+      ]
+    },
+    {
+      "id": "migration-unavailable-guide",
+      "prompt": "Plan a move from `from qiskit_ibm_runtime import SamplerV2` to the client-side primitive in installed Runtime 0.51.0. The workload mixes per-PUB shot values. You cannot retrieve external documentation. Can you safely finish the migration now? Do not edit code.",
+      "expected_skills": ["migrate-qiskit-ibm-runtime"],
+      "resources": [
+        {"path": ".agents/skills/migrate-qiskit-ibm-runtime/registry.yaml"},
+        {"path": ".agents/skills/migrate-qiskit-ibm-runtime/migrate-older-v2-primitives.md"}
+      ],
+      "registry_checks": [
+        {"path": ".agents/skills/migrate-qiskit-ibm-runtime/registry.yaml", "collection": "changes", "match": {"id": "server-to-client"}, "links": {"url": "https://quantum.cloud.ibm.com/docs/guides/migrate-to-client-side-primitives.md", "companion_guide": ".claude/skills/migrate-qiskit-ibm-runtime/migrate-older-v2-primitives.md"}}
+      ],
+      "rubric": [
+        "Select migration, inspect the registry and distinguish the external primary guide from its local companion.",
+        "Report the unavailable primary guide as a blocker to edits, not a license to migrate from memory or treat the companion as a fallback.",
+        "Flag mixed-shot restructuring as results-changing and requiring review; do not claim the migration is complete.",
+        "Use the supplied installed version as context, not as proof that option paths or live execution were verified."
+      ]
+    },
+    {
+      "id": "mitigation-sampler-readout",
+      "prompt": "I have 24-qubit Sampler bitstring counts with a synthetic readout-noise model and a limited shot budget. Would enabling TREX fix the distribution? I explicitly want to compare M3 as an optional post-processing route. Explain prerequisites and limits without installing anything.",
+      "expected_skills": ["select-error-mitigation"],
+      "resources": [
+        {"path": ".agents/skills/select-error-mitigation/registry.yaml"},
+        {"path": ".agents/skills/select-error-mitigation/trex.md", "heading": "## When not to use"},
+        {"path": ".agents/skills/select-error-mitigation/m3.md", "heading": "## Configuration"}
+      ],
+      "registry_checks": [
+        {"path": ".agents/skills/select-error-mitigation/registry.yaml", "collection": "capabilities", "match": {"id": "trex"}, "links": {"path": ".claude/skills/select-error-mitigation/trex.md"}},
+        {"path": ".agents/skills/select-error-mitigation/registry.yaml", "collection": "capabilities", "match": {"id": "m3"}, "links": {"path": ".claude/skills/select-error-mitigation/m3.md"}}
+      ],
+      "rubric": [
+        "Read the mitigation entry point, registry and both capability pages rather than routing by the word TREX alone.",
+        "Distinguish expectation-value TREX from Sampler distribution post-processing.",
+        "Identify M3 as external and requiring calibration plus the actual measurement mapping; no real calibration job is authorized.",
+        "Do not promise accuracy improvement, hardware connectivity or a measured comparison from static resource access."
+      ]
+    },
+    {
+      "id": "mitigation-pub-broadcasting",
+      "prompt": "Review a proposed Estimator mitigation scaffold with three observables and five points of a one-parameter circuit. The observables have shape (3,) and parameter_values shape (5,1); the author claims a (5,3) PUB result. Explain the broadcasting issue and what a local check could and could not establish.",
+      "expected_skills": ["select-error-mitigation"],
+      "resources": [
+        {"path": ".agents/skills/select-error-mitigation/references/pub-broadcasting.md"},
+        {"path": ".agents/skills/select-error-mitigation/verification.md", "heading": "## Method C"}
+      ],
+      "registry_checks": [],
+      "rubric": [
+        "Follow the mitigation skill's reference to PUB broadcasting instead of inventing a result shape.",
+        "Explain why the final parameter axis is not a broadcast axis and describe a compatible (5,1,1) parameter shape for (5,3).",
+        "Propose coercing the actual EstimatorPub; distinguish shape/option validation from accuracy and real-service behavior.",
+        "Do not claim local mitigation comparisons ran or that a fake backend predicts the QPU."
+      ]
+    },
+    {
+      "id": "sqd-spin-and-rdms",
+      "prompt": "My Python SQD recovery loop needs a singlet spin penalty and full 1- and 2-RDMs for embedding at 36 spatial orbitals. PySCF is slow. Could I swap in SBD or Dice unchanged? Explain reachable addon capabilities and tradeoffs before asking about hardware.",
+      "expected_skills": ["select-sqd-eigensolver"],
+      "resources": [
+        {"path": ".agents/skills/select-sqd-eigensolver/registry.yaml"},
+        {"path": ".agents/skills/select-sqd-eigensolver/capabilities.md", "heading": "## Failures that look like successes"}
+      ],
+      "registry_checks": [],
+      "rubric": [
+        "Use registry and capabilities.md, not the generated capabilities-table.md, and reason at the addon layer.",
+        "Warn that SBD accepts but ignores spin_sq and that Dice's wrapper drops full RDMs despite the engine computing them.",
+        "Explain binding keyword-only solver options, and that binding cannot restore discarded outputs or create absent spin control.",
+        "Offer near-miss tradeoffs and targeted questions; do not claim every requirement is met or install all solvers."
+      ]
+    },
+    {
+      "id": "sqd-complex-support",
+      "prompt": "I need complex Hermitian chemistry integrals through diagonalize_fermionic_hamiltonian. Someone says SBD is templated on complex numbers so it should work unchanged. Review this claim and distinguish numerical-core support from the chemistry and Python/addon paths.",
+      "expected_skills": ["select-sqd-eigensolver"],
+      "resources": [
+        {"path": ".agents/skills/select-sqd-eigensolver/registry.yaml"},
+        {"path": ".agents/skills/select-sqd-eigensolver/capabilities.md", "heading": "## Support has levels, not a checkbox"},
+        {"path": ".agents/skills/select-sqd-eigensolver/references/sbd-complex-hamiltonian-support.md", "heading": "## Caveat on method"}
+      ],
+      "registry_checks": [
+        {"path": ".agents/skills/select-sqd-eigensolver/registry.yaml", "collection": "matrix", "match": {"feature": "complex", "solver": "sbd"}, "links": {"engine.reference": "references/sbd-complex-hamiltonian-support.md"}}
+      ],
+      "rubric": [
+        "Open the referenced complex-support assessment rather than equating C++ templates with usable addon support.",
+        "Distinguish CAOP/core support from TPB, real-only integral transport and Python/addon limitations.",
+        "Disclose the assessment's commit/date, agent authorship, lack of maintainer review and syntax-only rather than full runtime verification.",
+        "Do not present a pinned assessment as freshly verified upstream behavior or promote supported to verified without evidence."
+      ]
+    },
+    {
+      "id": "fermionic-encoding",
+      "prompt": "Plan a four-site spinful Hubbard time-evolution check. Compare Jordan-Wigner with a parity encoding, prepare an asymmetric occupation state, and preserve occupation readout after routing. Does equal spectrum or shorter Pauli weight prove the circuit and readout are correct? No code execution is requested.",
+      "expected_skills": ["simulate-fermionic-systems"],
+      "resources": [
+        {"path": ".agents/skills/simulate-fermionic-systems/SKILL.md", "heading": "## Validating at small size"},
+        {"path": ".agents/skills/simulate-fermionic-systems/SKILL.md", "heading": "### Choosing an encoding"}
+      ],
+      "registry_checks": [],
+      "rubric": [
+        "Read the fermionic skill and use its version-specific external documentation route; disclose that external APIs cannot be grounded in this offline case.",
+        "State mode/spin ordering, constants and the distinction between parity bits and occupations.",
+        "Propose asymmetric preparation/occupation and routed readout checks, with an independent small reference.",
+        "Reject spectrum agreement and Pauli-weight proxies as sufficient correctness or compiled-cost evidence; distinguish a plan from executed verification."
+      ]
+    },
+    {
+      "id": "fermionic-sqd-handoff",
+      "prompt": "Plan an occupation-sampling ground-state workflow for an eight-orbital fermionic Hamiltonian, followed by classical subspace diagonalization with more than one root. Explain which guidance covers circuit/encoding choices and which covers solver integration. What data must cross the boundary?",
+      "expected_skills": ["simulate-fermionic-systems", "select-sqd-eigensolver"],
+      "resources": [
+        {"path": ".agents/skills/simulate-fermionic-systems/SKILL.md", "heading": "## Sample-based diagonalization (SQD, SKQD, SqDRIFT)"},
+        {"path": ".agents/skills/select-sqd-eigensolver/registry.yaml"},
+        {"path": ".agents/skills/select-sqd-eigensolver/capabilities.md", "heading": "## The `sci_solver` interface is the main source of surprise"}
+      ],
+      "registry_checks": [],
+      "rubric": [
+        "Select both skills with distinct responsibilities, without treating eigensolver guidance as circuit construction guidance.",
+        "Carry norb, per-spin nelec, matching-basis chemist-notation full integrals, constants, counts and target-state validation into the solver discussion.",
+        "Explain the recovery loop's single-best-result contract and distinguish direct multi-root solving from addon output.",
+        "Keep optional installation and scaling conditional; no quantum advantage, QPU run or numerical result is established."
+      ]
+    },
+    {
+      "id": "local-bell-negative-control",
+      "prompt": "Explain how to repeat a local Bell-circuit simulation with 256 shots and a fixed seed using the current project CLI, and retain its native report. The lab notebook happens to mention migration of meeting notes and classical mitigation of scheduling delays; neither phrase describes a quantum API or noise-management task. Do not execute anything.",
+      "expected_skills": ["qiskit-lab"],
+      "resources": [
+        {"path": ".agents/skills/qiskit-lab/SKILL.md", "heading": "## Workflow"},
+        {"path": ".agents/skills/qiskit-lab/SKILL.md", "heading": "## Automatic completion reports"}
+      ],
+      "registry_checks": [],
+      "rubric": [
+        "Use project execution/report guidance, not an official migration/mitigation/SQD/fermionic skill based on unrelated words.",
+        "Keep simulation as default and make no account, onboarding or service query under the explicit offline context.",
+        "Retain the native report workflow and distinguish instructions from generated artifacts.",
+        "Do not invent a run ID, measurement counts, rendered file or passing execution."
+      ]
+    }
+  ]
+}
