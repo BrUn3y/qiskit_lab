@@ -95,3 +95,10 @@ For changes to runtime behavior, record compatibility and migration notes in
 the PR and the relevant user documentation. Do not invent historical changelog
 entries or increment the package version for documentation-only changes; the
 maintainer controls releases.
+
+For bundled-skill changes, follow [Skill Evaluations and Updates](docs/skills.md).
+Keep upstream resources unmodified at their pinned revision. Generate updates
+as external review proposals, then use a dedicated PR with complete resources,
+licenses, provenance and hashes. An ordinary test pass is not an agent-behavior
+evaluation; record actual prompts, tool reads, responses and reviewer judgments
+separately, or explicitly report behavior evaluation as not run.
