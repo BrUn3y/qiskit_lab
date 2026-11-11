@@ -6,7 +6,7 @@ import math
 import re
 import tempfile
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import matplotlib
@@ -38,7 +38,8 @@ class QAOAExperimentResult:
     counts: dict[str, int]
     optimization_trace: tuple[float, ...]
     qasm: str
-    dashboard_path: Path
+    dashboard_path: Path | None = None
+    dashboard_error: str | None = None
 
 
 def parse_maxcut_graph(request: str) -> tuple[int, tuple[tuple[int, int], ...]]:
@@ -187,8 +188,31 @@ def _render_dashboard(
     return output_path
 
 
-def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAExperimentResult:
-    """Optimize a p=1 QAOA Max-Cut circuit and validate it exactly."""
+def render_qaoa_dashboard(result: QAOAExperimentResult) -> Path:
+    """Render an already computed experiment without sampling or optimizing again."""
+    path = _render_dashboard(
+        node_count=result.node_count,
+        edges=result.edges,
+        best_bitstring=result.best_bitstring,
+        counts=result.counts,
+        expected_cut=result.expected_cut,
+        exact_cut=result.exact_cut,
+        approximation_ratio=result.approximation_ratio,
+        trace=list(result.optimization_trace),
+    )
+    if not path.is_file():
+        raise FileNotFoundError("Dashboard renderer did not create a file.")
+    return path
+
+
+def run_maxcut_qaoa(
+    request: str, *, shots: int = 1024, seed: int = 42, render_dashboard: bool = True,
+) -> QAOAExperimentResult:
+    """Optimize p=1 QAOA; callers saving receipts can defer presentation.
+
+    The default still renders a dashboard, but a rendering failure returns the
+    completed science with dashboard_error instead of discarding the result.
+    """
     if shots < 1:
         raise ValueError("QAOA requires at least one shot.")
     node_count, edges = parse_maxcut_graph(request)
@@ -225,17 +249,7 @@ def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAE
     exact_cut, _ = _exact_solution(node_count, edges)
     ratio = best_expectation / exact_cut if exact_cut else 1.0
     measured_circuit = _qaoa_circuit(node_count, edges, best_gamma, best_beta, measurements=True)
-    dashboard_path = _render_dashboard(
-        node_count=node_count,
-        edges=edges,
-        best_bitstring=best_bitstring,
-        counts=counts,
-        expected_cut=best_expectation,
-        exact_cut=exact_cut,
-        approximation_ratio=ratio,
-        trace=trace,
-    )
-    return QAOAExperimentResult(
+    result = QAOAExperimentResult(
         node_count=node_count,
         edges=edges,
         gamma=best_gamma,
@@ -248,5 +262,10 @@ def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAE
         counts=dict(sorted(counts.items(), key=lambda item: item[1], reverse=True)),
         optimization_trace=tuple(trace),
         qasm=qasm3_dumps(measured_circuit),
-        dashboard_path=dashboard_path,
     )
+    if not render_dashboard:
+        return result
+    try:
+        return replace(result, dashboard_path=render_qaoa_dashboard(result))
+    except Exception as error:  # noqa: BLE001 - Keep completed science available on presentation failure
+        return replace(result, dashboard_error=type(error).__name__)

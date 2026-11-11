@@ -1,0 +1,41 @@
+name: Optional capability smoke
+on:
+  pull_request:
+    paths:
+      - "environments/optional/**"
+      - "src/**"
+      - "scripts/dam/check-optional.py"
+      - "pyproject.toml"
+      - "docs/optional-capabilities.md"
+      - ".github/workflows/optional.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  optional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+        profile: ["sqd", "fermionic", "fermionic-sim"]
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      RAYON_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: environments/optional/uv.lock
+      - name: Install only the chosen locked profile
+        run: uv sync --locked --project environments/optional --extra "${{ matrix.profile }}"
+      - name: Inspect metadata without credentials or IBM access
+        run: uv run --offline --locked --project environments/optional --extra "${{ matrix.profile }}" qiskit-lab doctor --capability "${{ matrix.profile }}"
+      - name: Exercise the selected native libraries on a synthetic model
+        run: uv run --offline --locked --project environments/optional --extra "${{ matrix.profile }}" python scripts/dam/check-optional.py "${{ matrix.profile }}"

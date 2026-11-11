@@ -15,7 +15,12 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    Bind parameters and include measurements; the loader adds them if missing.
    Qiskit Python can be developed as a normal script, then exported with
    `qiskit.qasm3.dumps(qc)` to feed the execution tool.
-2. **Check:** `scripts/dam/quantum doctor`; use `doctor --online` to verify IBM
+2. **Check:** `scripts/dam/quantum doctor` is credential-free and offline.
+   Optional SQD/fermionic profiles use a separate locked project: read
+   `docs/optional-capabilities.md` before installing. The base wrapper does not
+   retain ad hoc optional installs. Run doctor in the chosen optional interpreter
+   with `--capability PROFILE` and then its explicit native smoke check; metadata
+   presence alone does not verify native libraries. Use `doctor --online` to verify IBM
    access. `backends` and `backend ibm_NAME` are live hardware queries.
    `backend ibm_NAME --dashboard` reuses the original topology/health PNG renderer.
 3. **Simulate:** `scripts/dam/quantum execute --example bell --shots 1024`.
