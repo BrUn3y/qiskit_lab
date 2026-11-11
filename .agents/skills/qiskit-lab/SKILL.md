@@ -15,7 +15,12 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    Bind parameters and include measurements; the loader adds them if missing.
    Qiskit Python can be developed as a normal script, then exported with
    `qiskit.qasm3.dumps(qc)` to feed the execution tool.
-2. **Check:** `scripts/dam/quantum doctor`; use `doctor --online` to verify IBM
+2. **Check:** `scripts/dam/quantum doctor` is credential-free and offline.
+   Optional SQD/fermionic profiles use a separate locked project: read
+   `docs/optional-capabilities.md` before installing. The base wrapper does not
+   retain ad hoc optional installs. Run doctor in the chosen optional interpreter
+   with `--capability PROFILE` and then its explicit native smoke check; metadata
+   presence alone does not verify native libraries. Use `doctor --online` to verify IBM
    access. `backends` and `backend ibm_NAME` are live hardware queries.
    `backend ibm_NAME --dashboard` reuses the original topology/health PNG renderer.
 3. **Simulate:** `scripts/dam/quantum execute --example bell --shots 1024`.
@@ -31,6 +36,14 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    joint bit counts and a named Carbon HTML report. `--title 'Bell circuit'` can
    label an existing job when its circuit description is known. `--wait 60` waits briefly for an existing job, and
    `--output artifacts/dam/job.json` saves it. A timeout is not a new submission.
+   If the submission response was lost, read the public `submission-intent.json`
+   for its `run_id`, then run `scripts/dam/quantum recover-submission RUN_ID`
+   with the original `--output-dir` and IBM instance. Recovery only reads IBM
+   jobs by the saved unique run tag and project tag; it never submits or retries.
+   Zero matches do not prove failure; repeat read-only recovery later. One match
+   durably tracks its ID for `job`/`poll-jobs`. Multiple matches remain ambiguous
+   with candidate IDs and no automatic selection. An already tracked ID needs no
+   IBM query. Never infer acceptance/failure from a missing response alone.
 6. **Experiment:** `scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'`.
    This runs the Qiskit deterministic p=1 engine (2–8 nodes), optimizes locally,
    compares with the exact classical optimum and produces a PNG, JSON and QASM.

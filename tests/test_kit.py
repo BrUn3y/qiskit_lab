@@ -77,6 +77,15 @@ def test_official_skills_are_discoverable_and_packaged_with_unmodified_resources
     assert (skills_root / 'qiskit-lab/SKILL.md').is_file()
 
 
+def test_optional_environment_is_in_tracked_source_export_not_base_install(deploy, tmp_path):
+    deploy.copy_tracked(tmp_path)
+    for relative in ("environments/optional/pyproject.toml", "environments/optional/uv.lock",
+                     "docs/optional-capabilities.md", "scripts/dam/check-optional.py"):
+        assert (tmp_path / relative).read_bytes() == (ROOT / relative).read_bytes()
+    assert "environments/optional" not in (tmp_path / "scripts/dam/install.sh").read_text()
+    assert "environments/optional" not in (tmp_path / "scripts/dam/quantum").read_text()
+
+
 def test_native_reporting_schedule_runs_only_the_installed_read_only_precheck(deploy):
     kit = yaml.safe_load((ROOT / "kit.yaml").read_text())
     assert len(kit["schedules"]) == 1
