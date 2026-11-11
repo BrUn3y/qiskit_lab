@@ -250,7 +250,7 @@ def write_report(data, directory):
             source_sections.append(_code_source(label, content, filename.replace('.', '-'), description))
             recorded_sources.add(filename)
     for index, row in enumerate(data.get("correlators", []), start=1):
-        for key, extension, title, description in (
+        for key, extension, source_title, description in (
             ("qasm", "qasm", "OpenQASM", "Recorded measurement circuit for this CHSH configuration."),
             ("qiskit_source", "py", "Qiskit Python script",
              "Recorded reconstruction for this configuration; not the original author's Python source."),
@@ -258,7 +258,7 @@ def write_report(data, directory):
             source = row.get(key)
             if isinstance(source, str) and source:
                 filename = f"configuration-{index}.{extension}"
-                label = f"{title} - configuration {row['label']}"
+                label = f"{source_title} - configuration {row['label']}"
                 downloads += _download("Download " + filename, filename, source, "text/plain")
                 source_sections.append(_code_source(label, source, f"configuration-{index}-{extension}", description))
                 recorded_sources.add(f"circuit.{extension}")

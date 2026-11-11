@@ -104,6 +104,8 @@ def test_default_command_samples_once_and_preserves_all_provenance(monkeypatch, 
     assert json.loads((directory / "receipt.json").read_text()) == result
     assert not list(tmp_path.rglob("job-notifications.json"))
     html = Path(result["report_path"]).read_text()
+    assert f"<h1>{result['title']}</h1>" in html
+    assert f"<title>{result['title']} | Qiskit Lab</title>" in html
     assert result["report_filename"] == f"{result['run_id']}-chsh-bell-inequality-experiment.html"
     assert "CHSH measurement correlators" in html
     assert html.count("data-publication=") == 4
@@ -176,6 +178,7 @@ def test_command_dispatch_and_custom_title(tmp_path, capsys):
     assert result["observed_shots"] == 4
     assert result["title"] == result["report_title"] == "Local CHSH test"
     assert result["report_filename"].endswith("-local-chsh-test.html")
+    assert "<h1>Local CHSH test</h1>" in Path(result["report_path"]).read_text()
 
 
 def test_science_is_saved_before_native_report_failure(monkeypatch, tmp_path):
