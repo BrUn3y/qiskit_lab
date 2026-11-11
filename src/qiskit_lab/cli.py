@@ -29,6 +29,7 @@ from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
 from qiskit_lab.capabilities import PROFILES, optional_capabilities
 from qiskit_lab.comparison import ComparisonError, compare_receipts, comparison_metadata
 from qiskit_lab.reports import write_report
+from qiskit_lab.submission import RecoveryError, SubmissionError, prepare_intent, recover_submission, submit_once
 
 ROOT = Path.cwd()
 logging.getLogger("qiskit_ibm_runtime").setLevel(logging.CRITICAL)
@@ -229,15 +230,13 @@ def execute(args):
         isa_circuit = generate_preset_pass_manager(backend=backend, optimization_level=1).run(circuit)
         (directory / "isa-circuit.qasm").write_text(qasm3.dumps(isa_circuit))
         receipt.update(isa_qubits=isa_circuit.num_qubits, isa_depth=isa_circuit.depth(),
-                       isa_gate_counts=dict(isa_circuit.count_ops()), max_execution_time=args.max_execution_time)
+                       isa_gate_counts=dict(isa_circuit.count_ops()), max_execution_time=args.max_execution_time,
+                       backend=backend.name)
+        prepare_intent(receipt)
         sampler = SamplerV2(mode=backend, options={"max_execution_time": args.max_execution_time,
-                                                  "environment": {"job_tags": ["qiskit-lab-dam"]}})
+                                                  "environment": {"job_tags": receipt["submission"]["job_tags"]}})
         # Never retry run(): a network error may occur after IBM accepted a job.
-        job = sampler.run([isa_circuit], shots=args.shots)
-        receipt.update(backend=backend.name, job_id=job.job_id(), status="SUBMITTED")
-        # Persist the accepted job immediately, before any status/result requests.
-        save_json(directory / "receipt.json", receipt)
-        return receipt
+        return submit_once(sampler, isa_circuit, receipt, directory)
     result = StatevectorSampler(seed=42).run([circuit], shots=args.shots).result()
     receipt.update(backend="local_statevector_simulator", status="DONE", counts=counts_from_result(result)[0])
     receipt.update(completed_at=now(), duration_seconds=round(time.monotonic() - started, 6), seed=42)
@@ -453,6 +452,9 @@ def parser():
     status.add_argument("--wait", type=bounded_integer(0, 300), default=0)
     status.add_argument("--output", type=Path)
     status.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
+    recovery = commands.add_parser("recover-submission", help="Find existing jobs by saved run tag; never submit")
+    recovery.add_argument("run_id", help="run_id from the saved submission-intent.json or submission error")
+    recovery.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
     poll = commands.add_parser("poll-jobs", help="Check tracked jobs and generate Carbon HTML on completion")
     poll.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
     poll.add_argument("--precheck", action="store_true", help="Exit 1 when no report notifications are pending")
@@ -488,6 +490,8 @@ def main(argv=None):
             result = execute(args)
         elif args.command == "job":
             result = inspect_job(args)
+        elif args.command == "recover-submission":
+            result = recover_submission(args)
         elif args.command == "qaoa":
             result = qaoa(args)
         elif args.command == "report":
@@ -504,7 +508,9 @@ def main(argv=None):
         if args.command == "doctor" and args.capability:
             return int(any(item["status"] != "installed" for item in result["optional_capabilities"].values()))
         return 0
-    except UserError as error:
+    except SubmissionError as error:
+        print(json.dumps(error.response, indent=2, default=str))
+    except (UserError, RecoveryError) as error:
         print(json.dumps({"error": str(error)}))
     except Exception as error:  # noqa: BLE001 - CLI boundary redacts SDK request bodies
         # SDK exception messages can contain request bodies or credentials.

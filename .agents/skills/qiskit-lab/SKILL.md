@@ -36,6 +36,14 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    joint bit counts and a named Carbon HTML report. `--title 'Bell circuit'` can
    label an existing job when its circuit description is known. `--wait 60` waits briefly for an existing job, and
    `--output artifacts/dam/job.json` saves it. A timeout is not a new submission.
+   If the submission response was lost, read the public `submission-intent.json`
+   for its `run_id`, then run `scripts/dam/quantum recover-submission RUN_ID`
+   with the original `--output-dir` and IBM instance. Recovery only reads IBM
+   jobs by the saved unique run tag and project tag; it never submits or retries.
+   Zero matches do not prove failure; repeat read-only recovery later. One match
+   durably tracks its ID for `job`/`poll-jobs`. Multiple matches remain ambiguous
+   with candidate IDs and no automatic selection. An already tracked ID needs no
+   IBM query. Never infer acceptance/failure from a missing response alone.
 6. **Experiment:** `scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'`.
    This runs the Qiskit deterministic p=1 engine (2–8 nodes), optimizes locally,
    compares with the exact classical optimum and produces a PNG, JSON and QASM.

@@ -221,7 +221,62 @@ dam run 'Qiskit Lab' -p 'Create a Bell state and simulate it with 1024 shots'
 dam chat 'Qiskit Lab'
 ```
 
-Simulation is the default. When you request real hardware, the agent submits one job and returns its ID without waiting through the entire queue. Query the same ID later. The default QPU execution limit is 300 seconds per job; it does not limit cost or queue time. If a submission response is lost, inspect IBM jobs tagged `qiskit-lab-dam` before requesting another submission.
+Simulation is the default. When you request real hardware, the agent submits one job and returns its ID without waiting through the entire queue. Query the same ID later. The default QPU execution limit is 300 seconds per job; it does not limit cost or queue time. A missing submission response is not proof that IBM rejected the job. Never retry a hardware submission automatically.
+
+### Recover an uncertain submission
+
+Before the single `sampler.run()` call, hardware execution atomically saves and
+syncs `submission-intent.json` and `receipt.json` in the run's artifact directory.
+They record the `run_id`, a full random UUID submission identifier, intent time,
+backend, shots, execution limit, source-circuit identity, ISA statistics and SDK
+versions. The job receives both `qiskit-lab-dam` and the unique
+`qiskit-lab-run-<submission-uuid>` tag. No credentials or SDK options/exception
+bodies are saved.
+
+If the response or job ID is lost, the CLI exits 1 with
+`submission_outcome: "unknown"`, the run ID, public tags and recovery instructions. An abrupt process
+exit can leave the same unknown state on disk. Use the saved run ID, original
+output directory, and original IBM instance:
+
+```sh
+uv run --locked qiskit-lab recover-submission RUN_ID --output-dir artifacts/dam
+```
+
+Recovery only reads IBM's job list, filtering by both tags and the backend,
+across pending and terminal states. It never submits, resubmits, cancels, retags,
+waits for results or acknowledges notifications. It writes local tracking files:
+
+- `no_match`: no job is visible in the active instance yet. This does **not**
+  prove submission failed; tags can take time to appear or the selected instance
+  may differ. Repeat this read-only command later. Do not automatically retry.
+- `recovered`: exactly one job matches. Its accepted ID is durably saved before
+  returning and becomes eligible for the existing `job` / `poll-jobs` workflow.
+- `ambiguous`: at least two jobs match. Up to two candidate IDs are returned and
+  saved in `submission-recovery.json`; none is selected automatically. Inspect
+  those existing IDs before deciding what to do.
+- `already_tracked`: the ID is already saved. No IBM query is made; completed
+  receipts, counts, reports and acknowledgement state remain unchanged.
+- `query_error`: the query was unavailable, not an empty result. The CLI exits 1
+  with a safe exception class and keeps the unknown intent for later recovery.
+
+A successful recovery command exits 0 even for `no_match` or `ambiguous`; inspect
+`recovery_status`, not just the exit code. Recovery serializes receipt repairs
+with job polling and refuses a run whose submitter is still active. It is a
+manual command, not a new automatic poll or retry schedule.
+Reusing a saved run's submission intent is refused, including after interruption;
+only the read-only recovery path can resume its tracking.
+
+Accepted IDs are saved in both the journal and receipt before any status/result
+request. If one tracking file cannot be updated, the other retains the ID and
+the CLI exits 1 with that ID; recovery can repair a missing receipt from the
+journal. Preserve both files. If both writes fail, keep the returned ID and fix
+storage; the original unique-tag intent remains the fallback. Sync/atomic-rename
+guarantees depend on the local filesystem and do not survive loss of that
+filesystem. This is recovery assistance, not an IBM idempotency guarantee.
+
+Historical runs without an intent or unique tag remain usable with `job JOB_ID`
+and `poll-jobs`. They cannot be uniquely recovered by this command: manually
+inspect existing `qiskit-lab-dam` jobs before any owner-authorized retry.
 
 ## Automatic HTML job reports
 
