@@ -28,7 +28,7 @@ async function download(page, name) {
   return { filename: result.suggestedFilename(), bytes: await readFile(await result.path(), "utf8") };
 }
 
-test("charts, isolated controls and complete downloads work offline", async ({ context, page }, info) => {
+test("charts and isolated controls work offline", async ({ context, page }) => {
   const check = await guard(context, page);
   await page.goto(pathToFileURL(manifest.interactive).href);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(manifest.data.title);
@@ -60,7 +60,12 @@ test("charts, isolated controls and complete downloads work offline", async ({ c
   await first.getByLabel("Filter bitstrings").fill("");
   await expect(first.locator("tbody tr")).toHaveCount(50);
   await first.getByLabel("Chart value").selectOption("probability");
+  await check();
+});
 
+test("complete downloads, source disclosures and embedded images work offline", async ({ context, page }, info) => {
+  const check = await guard(context, page);
+  await page.goto(pathToFileURL(manifest.interactive).href);
   const json = await download(page, "Download result JSON");
   expect(json.filename).toBe(`${manifest.data.report_filename.slice(0, -5)}-results.json`);
   expect(JSON.parse(json.bytes)).toEqual(manifest.data);
@@ -78,7 +83,8 @@ test("charts, isolated controls and complete downloads work offline", async ({ c
   const image = page.getByRole("img", { name: "Circuit and scientific results dashboard" });
   await expect(image).toBeVisible();
   expect(await image.evaluate(node => node.complete && node.naturalWidth === 2400)).toBe(true);
-  expect(await first.locator("svg").evaluate(node => node.getBoundingClientRect().width)).toBeGreaterThan(200);
+  expect(await page.locator(".publication").first().locator("svg")
+    .evaluate(node => node.getBoundingClientRect().width)).toBeGreaterThan(200);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.screenshot({ path: info.outputPath("report.png"), fullPage: true });
   await check();

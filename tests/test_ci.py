@@ -34,18 +34,17 @@ def test_browser_smoke_is_separate_pinned_and_does_not_replace_tracking_coverage
     commands = [step.get("run", "") for step in browser["steps"]]
     assert "uv run --locked python tools/report-assets/create-fixtures.py" in commands
     assert "npm run test:browser" in commands
-    installs = {step.get("run"): step for step in browser["steps"] if "run" in step}
-    for command, budget in (
-        ("npm ci --ignore-scripts --no-audit --no-fund", 2),
-        ("npx --no-install playwright install-deps chromium", 3),
-        ("npx --no-install playwright install --only-shell chromium", 2),
-    ):
-        assert installs[command]["timeout-minutes"] == budget
-        assert installs[command]["working-directory"] == "tools/report-assets"
+    install, = [step for step in browser["steps"]
+                if step.get("run") == "npm ci --ignore-scripts --no-audit --no-fund"]
+    assert install["timeout-minutes"] == 2
+    assert install["working-directory"] == "tools/report-assets"
+    assert not any("playwright install" in command for command in commands)
     package = json.loads((ROOT / "tools/report-assets/package.json").read_text())
     lock = json.loads((ROOT / "tools/report-assets/package-lock.json").read_text())
     version = package["devDependencies"]["@playwright/test"]
     assert lock["packages"]["node_modules/@playwright/test"]["version"] == version
+    assert browser["container"]["image"] == f"mcr.microsoft.com/playwright:v{version}-noble"
+    assert browser["container"]["options"] == "--ipc=host"
     native = yaml.safe_load((ROOT / ".github/workflows/dam.yml").read_text())["jobs"]["native-dam"]
     assert any(step.get("run") == "uv run --locked coverage report --include='*/job_tracking.py' --fail-under=100"
                for step in native["steps"])

@@ -70,13 +70,16 @@ an agent publishes HTML artifacts separately through DAM tools.
 
 ## Local report browser smoke
 
-The separate `report-browser` CI job runs on Ubuntu 24.04 with one Chromium
+The separate `report-browser` CI job uses the official Playwright Ubuntu 24.04
+container, pinned to the same version as the npm lockfile. It runs one Chromium
 headless-shell worker at desktop and mobile sizes, with no retries.
 It uses synthetic local HTML fixtures, blocks
 external requests, and fails on page errors. It checks charts, independent
 filters and modes, pagination, exact downloaded JSON/source bytes, embedded
 images, terminal failures, and the JavaScript-disabled fallback. It does not
 contact IBM, run QPU work, or verify agent behavior.
+Controls and downloads use independent browser contexts and separate scenarios,
+each retaining the same 30-second limit.
 
 To reproduce with Node.js 20+ and the locked Python environment:
 
@@ -91,8 +94,8 @@ npm run test:browser
 ```
 
 Installation needs network access; fixture generation and browser tests do not.
-CI reports tooling, system dependency and browser downloads as separately timed
-steps within the unchanged ten-minute job budget.
+The CI image includes browser binaries and system dependencies, avoiding a
+per-run apt installation within the unchanged ten-minute job budget.
 Reports open directly from disk; no server or external assets are needed.
 Generated fixtures, screenshots and failure traces stay under ignored
 `artifacts/report-smoke/`. The browser dependency is development-only, pinned
