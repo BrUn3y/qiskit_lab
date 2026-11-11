@@ -150,8 +150,10 @@ def _chsh(data):
         angles = [f"{math.degrees(row[key]):.1f}°" if row.get(key) is not None else "Not available"
                   for key in ("alice_angle_rad", "bob_angle_rad")]
         theory = f'{row["theory"]:+.4f}' if row.get("theory") is not None else "Not available"
+        lower, upper = row["confidence_interval"]
         rows.append(f'<tr><td>{label}</td><td>{angles[0]}</td><td>{angles[1]}</td><td>{sign:+d}</td>'
-                    f'<td>{row["correlator"]:+.4f} ± {row["uncertainty"]:.4f}</td><td>{theory}</td>'
+                    f'<td>{row["correlator"]:+.4f} ± {row["uncertainty"]:.4f}</td>'
+                    f'<td>[{lower:+.4f}, {upper:+.4f}]</td><td>{theory}</td>'
                     f'<td>{row["shots"]:,}</td></tr>')
     warnings = ''.join(f'<p class="muted">{escape(warning)}</p>' for warning in data["sampling_warnings"])
     labels = [("chsh_ideal", "Ideal theoretical S"), ("classical_bound", "Classical bound |S|"),
@@ -159,16 +161,23 @@ def _chsh(data):
     model = data.get("noise_model") or {}
     if model.get("type") == "single_qubit_depolarizing" and data.get("hardware") is False:
         labels.append(("chsh_theory", "Noise-model prediction S"))
-    comparison = "Estimated |S| exceeds 2." if data["violated"] else "Estimated |S| does not exceed 2."
+    comparison = "Observed |S| exceeds 2." if data["observed_violation"] else "Observed |S| does not exceed 2."
+    support = ("Statistically supported |S| > 2 under the stated sampling assumptions (shot noise only)."
+               if data["statistically_supported_violation"] else
+               "A violation is not statistically supported at this confidence level.")
+    lower, upper = data["chsh_confidence_interval"]
     return f'''<section class="panel"><p class="eyebrow">Bell inequality analysis</p><h2>CHSH measurement correlators</h2>
     <p>Recomputed from observed counts: <strong>S = {data['chsh_value']:+.4f} ± {data['chsh_uncertainty']:.4f}</strong>.
     {comparison}</p><p class="muted">Independent-shot standard error, ±1σ. {escape(data['chsh_uncertainty_assumption'])}</p>
+    <p><strong>95% confidence interval for S (Hoeffding): [{lower:+.4f}, {upper:+.4f}]</strong>.
+    {support}</p><p class="muted">{escape(data['chsh_confidence_assumption'])}</p>
     {warnings}<p>Sign convention: S = {' '.join(terms)}</p>
     <p class="muted">E = (N00 + N11 − N01 − N10) / N. Angles use the convention recorded by the experiment.</p>
     <div class="table-scroll"><table class="cds--data-table cds--data-table--md">
     <caption class="sr-only">CHSH correlations and observed shots by configuration</caption>
     <thead><tr><th scope="col">Config</th><th scope="col">Alice θ</th><th scope="col">Bob θ</th>
-    <th scope="col">Sign</th><th scope="col">E ± σ</th><th scope="col">Recorded theoretical E</th>
+    <th scope="col">Sign</th><th scope="col">E ± σ</th><th scope="col">95% confidence interval</th>
+    <th scope="col">Recorded theoretical E</th>
     <th scope="col">Observed shots</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
     {_details(data, labels)}{_details(model, [('type', 'Recorded noise model'), ('parameter_p', 'Noise parameter p')])}
     <p class="muted">Ideal theory is a reference, not a calibrated prediction of hardware noise.

@@ -385,7 +385,8 @@ def test_new_qaoa_producer_emits_the_experiment_variant(tmp_path, capsys):
     assert validate_receipt(result) == result
 
 
-def test_hardware_validation_cannot_discard_an_accepted_id(tmp_path, monkeypatch):
+@pytest.mark.parametrize("through_cli", [False, True])
+def test_hardware_validation_cannot_discard_an_accepted_id(tmp_path, monkeypatch, capsys, through_cli):
     backend = SimpleNamespace(name="ibm_test", num_qubits=2, status=lambda: SimpleNamespace(operational=True))
     monkeypatch.setattr(cli, "runtime_service", lambda: SimpleNamespace(backend=lambda _: backend))
     monkeypatch.setattr(cli, "generate_preset_pass_manager",
@@ -394,6 +395,8 @@ def test_hardware_validation_cannot_discard_an_accepted_id(tmp_path, monkeypatch
 
     def sampler(**kwargs):
         def run(circuits, shots):
+            intent, = tmp_path.rglob("submission-intent.json")
+            assert json.loads(intent.read_text())["status"] == "SUBMISSION_UNKNOWN"
             calls.append(shots)
             return SimpleNamespace(job_id=lambda: "accepted-job")
         return SimpleNamespace(run=run)
@@ -410,8 +413,19 @@ def test_hardware_validation_cannot_discard_an_accepted_id(tmp_path, monkeypatch
         return validate(data, **kwargs)
 
     monkeypatch.setattr(cli, "validate_receipt", validate_after_acceptance)
-    args = cli.parser().parse_args(["execute", "--example", "bell", "--hardware", "--backend", "ibm_test",
-                                   "--shots", "8", "--output-dir", str(tmp_path)])
-    with pytest.raises(ReceiptValidationError, match="post-response"):
-        cli.execute(args)
+    argv = ["execute", "--example", "bell", "--hardware", "--backend", "ibm_test",
+            "--shots", "8", "--output-dir", str(tmp_path)]
+    if through_cli:
+        assert cli.main(argv) == 1
+        response = json.loads(capsys.readouterr().out)
+    else:
+        with pytest.raises(cli.SubmissionError) as caught:
+            cli.execute(cli.parser().parse_args(argv))
+        response = caught.value.response
+    assert response["job_id"] == "accepted-job"
+    assert response["submission_outcome"] == "accepted"
+    assert response["error"] == "ReceiptValidationError"
+    assert "do not resubmit" in response["next_step"]
+    intent, = tmp_path.rglob("submission-intent.json")
+    assert json.loads(intent.read_text())["job_id"] == "accepted-job"
     assert calls == [8]

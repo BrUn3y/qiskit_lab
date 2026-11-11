@@ -135,8 +135,10 @@ def test_uncertain_submission_is_never_retried(monkeypatch, tmp_path):
     monkeypatch.setattr(quantum, "SamplerV2", Mock(return_value=sampler))
     args = quantum.parser().parse_args(["execute", "--example", "bell", "--hardware", "--backend", "ibm_test",
                                         "--output-dir", str(tmp_path)])
-    with pytest.raises(ConnectionError):
+    with pytest.raises(quantum.SubmissionError) as error:
         quantum.execute(args)
+    assert error.value.response["submission_outcome"] == "unknown"
+    assert error.value.response["error"] == "ConnectionError"
     sampler.run.assert_called_once()
 
 

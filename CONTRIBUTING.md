@@ -68,6 +68,42 @@ comparison are covered by `tests/test_documentation.py`. Generated artifacts
 belong under ignored `artifacts/`, not in commits. The terminal CLI prints JSON;
 an agent publishes HTML artifacts separately through DAM tools.
 
+## Local report browser smoke
+
+The separate `report-browser` CI job uses the official Playwright Ubuntu 24.04
+container, pinned to the same version as the npm lockfile. It runs one Chromium
+headless-shell worker at desktop and mobile sizes, with no retries.
+It uses synthetic local HTML fixtures, blocks
+external requests, and fails on page errors. It checks charts, independent
+filters and modes, pagination, exact downloaded JSON/source bytes, embedded
+images, terminal failures, and the JavaScript-disabled fallback. It does not
+contact IBM, run QPU work, or verify agent behavior.
+Controls and downloads use independent browser contexts and separate scenarios,
+each retaining the same 30-second limit.
+
+To reproduce with Node.js 20+ and the locked Python environment:
+
+```sh
+uv sync --locked
+uv run --locked python tools/report-assets/create-fixtures.py
+cd tools/report-assets
+npm ci --ignore-scripts --no-audit --no-fund
+npx --no-install playwright install-deps chromium
+npx --no-install playwright install --only-shell chromium
+npm run test:browser
+```
+
+Installation needs network access; fixture generation and browser tests do not.
+The CI image includes browser binaries and system dependencies, avoiding a
+per-run apt installation within the unchanged ten-minute job budget.
+Reports open directly from disk; no server or external assets are needed.
+Generated fixtures, screenshots and failure traces stay under ignored
+`artifacts/report-smoke/`. The browser dependency is development-only, pinned
+in the existing asset-tool lockfile, and absent from the Python runtime image.
+The browser job is separate from the Python 3.11-3.13 matrix and does not replace
+its full job-tracking line/branch coverage gate. This is a targeted Chromium
+smoke, not cross-browser coverage, visual snapshot approval or proof of IBM access.
+
 ## Safety and review
 
 - Keep code, comments, and documentation in English. Add focused tests for
@@ -95,3 +131,10 @@ For changes to runtime behavior, record compatibility and migration notes in
 the PR and the relevant user documentation. Do not invent historical changelog
 entries or increment the package version for documentation-only changes; the
 maintainer controls releases.
+
+For bundled-skill changes, follow [Skill Evaluations and Updates](docs/skills.md).
+Keep upstream resources unmodified at their pinned revision. Generate updates
+as external review proposals, then use a dedicated PR with complete resources,
+licenses, provenance and hashes. An ordinary test pass is not an agent-behavior
+evaluation; record actual prompts, tool reads, responses and reviewer judgments
+separately, or explicitly report behavior evaluation as not run.
