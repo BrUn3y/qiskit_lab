@@ -99,7 +99,10 @@ The bundled copy is pinned to Qiskit/skills commit
 [`0888fb7`](https://github.com/Qiskit/skills/commit/0888fb799b8a3972da65c2c0ea1965e27957111d).
 [Source metadata](.agents/qiskit-skills.json) records the upstream revision and
 file hashes; the [upstream Apache 2.0 license](.agents/skills/QISKIT-SKILLS-LICENSE.txt)
-is preserved. These skills provide workflow guidance. Optional packages such as
+is preserved. [Skill evaluations and updates](docs/skills.md) provides representative
+cases, a separate transcript-based behavior-review protocol, and an offline,
+review-only upstream proposal command. Deterministic routing/resource checks do
+not prove model behavior. These skills provide workflow guidance. Optional packages such as
 `qiskit-fermions`, SQD add-ons and external solvers are installed when a task
 needs them, rather than added to the base SDK environment by installing the kit.
 Existing DAM agents need a checkout update to receive these files; see
