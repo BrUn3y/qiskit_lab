@@ -225,6 +225,9 @@ def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAE
     exact_cut, _ = _exact_solution(node_count, edges)
     ratio = best_expectation / exact_cut if exact_cut else 1.0
     measured_circuit = _qaoa_circuit(node_count, edges, best_gamma, best_beta, measurements=True)
+    from qiskit_lab.receipts import validate_counts
+
+    validate_counts(counts)
     dashboard_path = _render_dashboard(
         node_count=node_count,
         edges=edges,

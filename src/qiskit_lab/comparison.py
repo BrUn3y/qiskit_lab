@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from pathlib import Path
 
 from qiskit import qasm3
+
+from qiskit_lab.receipts import ReceiptValidationError, validate_receipt
 
 
 class ComparisonError(ValueError):
@@ -33,62 +34,20 @@ def comparison_metadata(circuit):
     }
 
 
-def _validate_metadata(metadata, width):
-    if (not isinstance(metadata, dict) or type(metadata.get("schema_version")) is not int
-            or metadata["schema_version"] != 1
-            or not isinstance(metadata.get("circuit_sha256"), str)
-            or not re.fullmatch(r"[0-9a-f]{64}", metadata["circuit_sha256"])):
-        raise ComparisonError("Invalid or unsupported comparison metadata; regenerate the receipt.")
-    num_clbits = metadata.get("num_clbits")
-    registers = metadata.get("registers")
-    measurements = metadata.get("measurements")
-    if (type(num_clbits) is not int or num_clbits < 1
-            or not isinstance(registers, list) or not registers or not isinstance(measurements, list)):
-        raise ComparisonError("Invalid measurement layout in comparison metadata.")
-    names = set()
-    bit_count = 0
-    for register in registers:
-        if (not isinstance(register, dict) or not isinstance(register.get("name"), str)
-                or not register["name"] or register["name"] in names
-                or not isinstance(register.get("clbits"), list) or not register["clbits"]
-                or any(type(bit) is not int or not 0 <= bit < num_clbits for bit in register["clbits"])):
-            raise ComparisonError("Invalid classical registers in comparison metadata.")
-        names.add(register["name"])
-        bit_count += len(register["clbits"])
-    for measurement in measurements:
-        if (not isinstance(measurement, list) or len(measurement) != 2
-                or any(type(bit) is not int or bit < 0 for bit in measurement)
-                or measurement[1] >= num_clbits):
-            raise ComparisonError("Invalid measured-bit mapping in comparison metadata.")
-    if bit_count != width:
-        raise ComparisonError("Count bit width does not match the recorded classical registers.")
-
-
 def _read_distribution(path):
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValueError) as error:
         raise ComparisonError("Cannot read comparison input; provide a readable UTF-8 JSON receipt.") from error
-    if not isinstance(data, dict):
-        raise ComparisonError("Each comparison input must be a JSON receipt object.")
+    try:
+        validate_receipt(data, for_comparison=True)
+    except ReceiptValidationError as error:
+        raise ComparisonError(str(error)) from error
     counts = data.get("counts")
     if isinstance(counts, list) and len(counts) == 1:
         counts = counts[0]
-    if not isinstance(counts, dict) or not counts:
-        raise ComparisonError("Each file must contain positive counts from one circuit.")
-    if any(type(value) is not int or value < 0 for value in counts.values()):
-        raise ComparisonError("Counts must be non-negative integers.")
-    if sum(counts.values()) <= 0:
-        raise ComparisonError("Each file must contain positive counts from one circuit.")
-    if any(not re.fullmatch(r"[01]+", state) for state in counts):
-        raise ComparisonError("Count keys must be non-empty binary bitstrings without separators.")
-    widths = {len(state) for state in counts}
-    if len(widths) != 1:
-        raise ComparisonError("All count bitstrings in a receipt must have the same bit width.")
-    width = widths.pop()
+    width = len(next(iter(counts)))
     metadata = data.get("comparison_metadata")
-    if "comparison_metadata" in data:
-        _validate_metadata(metadata, width)
     return counts, width, metadata
 
 

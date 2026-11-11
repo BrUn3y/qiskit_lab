@@ -157,6 +157,14 @@ Surface `report_error` and preserve the scientific result if rendering fails.
 
 ## Reporting
 
+New native receipts use top-level `schema_version: 1` and `receipt_type`.
+Read `docs/receipts.md` before constructing custom receipts. Historical files
+without that envelope remain supported; never remove an unsupported version to
+bypass validation. Use `qiskit_lab.receipts.validate_receipt` before publishing
+custom results. Counts, identity and required metadata must validate before
+reports; failed/cancelled jobs may have no counts. Offline imports retain their
+not-verified-online provenance and are not enrolled for implicit IBM polling.
+
 Respond in English. Cite actual tool output. Include backend, shots,
 job ID (hardware only), observed status, UTC timestamp and artifact paths.
 Explain queue delays and allow later job inspection. Never fabricate a QPU,
