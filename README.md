@@ -332,6 +332,52 @@ with the same root seed for each configuration. Adoption is required in custom
 experiment scripts; regenerating an old report cannot repair correlated samples.
 The helper supports measured statevector-compatible circuits of up to 20 qubits.
 
+### Run a local CHSH experiment
+
+```sh
+scripts/dam/quantum chsh --shots 8192 --seed 42
+```
+
+This local-only command prepares Bell state Phi+ and samples all four labelled
+configurations (`ab`, `ab'`, `a'b`, `a'b'`) with one `sample_configurations()` call.
+`--shots` is per configuration (1-100000), not a combined budget.
+`--seed` is a nonnegative root integer, default 42. Each configuration uses its
+own SeedSequence-derived stream; the root, ordered child seeds and each row's
+`configuration_seed` are saved. Repeated inputs reproduce counts and scientific
+results in the same locked environment, not run IDs, timestamps or output paths.
+SDK and NumPy versions are recorded; cross-version random results are not promised.
+
+The measurement convention is explicit: Alice is qubit 0, Bob is qubit 1 and
+the output bitstring is Bob-Alice (`c[1]c[0]`). Outcome bit 0 means +1 and bit 1
+means -1. An angle theta defines
+`M(theta) = cos(2 theta) Z + sin(2 theta) X`, implemented by `RY(-2 theta)`
+followed by Z measurement. This is a **basis angle**, half the Bloch rotation
+angle. All four options accept finite radians:
+
+```sh
+scripts/dam/quantum chsh --shots 8192 --seed 42 \
+  --alice-a 0 --alice-a-prime 0.7853981633974483 \
+  --bob-b 0.39269908169872414 --bob-b-prime 1.1780972450961724
+```
+
+These are the defaults: `a=0`, `a'=pi/4`, `b=pi/8`, `b'=3pi/8`.
+For Phi+, ideal `E(a,b) = cos(2(a-b))` and the fixed sign convention is
+`S = E(ab) - E(ab') + E(a'b) + E(a'b')`. Default ideal S is `2 sqrt(2)`;
+custom settings receive their own ideal reference, not an assumed maximum.
+Observed correlations and uncertainty are always calculated from counts.
+Shot-noise inference assumes independent samples, excludes systematic errors,
+and is not a loophole-free Bell test.
+
+The command saves `receipt.json`, all four QASM and generated Python
+reconstructions, circuit identities/measurement layouts, settings, signs, counts,
+seed provenance and execution metadata under `artifacts/dam/<run-id>/`.
+It generates the existing native HTML report, including four charts and QASM/Python
+downloads, rather than a separate renderer. Use `--title` and `--output-dir` to
+customize its name and location. Science is saved before rendering; a
+`report_error` preserves the receipt for offline regeneration with `report`.
+The model is **ideal statevector sampling only**: no noise parameter, calibrated
+noise prediction, backend selection or hardware submission is implemented here.
+
 ## Local examples
 
 From the repository root, after `uv sync --locked`:

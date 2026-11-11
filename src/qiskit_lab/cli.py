@@ -9,6 +9,7 @@ import argparse
 import importlib.metadata
 import json
 import logging
+import math
 import os
 import re
 import shlex
@@ -290,6 +291,54 @@ def qaoa(args):
     return finish_report(response, directory, "experiment.json")
 
 
+def chsh(args):
+    """Sample one complete local CHSH experiment, then use the native report."""
+    from qiskit_lab.chsh import MEASUREMENT_CONVENTION, build_chsh_configurations
+    from qiskit_lab.chsh_reporting import prepare_chsh_report
+    from qiskit_lab.sampling import sample_configurations
+
+    started = time.monotonic()
+    started_at = now()
+    try:
+        circuits, rows = build_chsh_configurations(
+            alice_a=args.alice_a, alice_a_prime=args.alice_a_prime,
+            bob_b=args.bob_b, bob_b_prime=args.bob_b_prime)
+    except ValueError as error:
+        raise UserError(str(error)) from error
+    directory = artifact_dir(args.output_dir)
+    diagrams = []
+    for index, (circuit, row) in enumerate(zip(circuits, rows, strict=True), start=1):
+        configuration_dir = directory / f"configuration-{index}"
+        configuration_dir.mkdir()
+        source = qasm3.dumps(circuit)
+        qasm_path = configuration_dir / "circuit.qasm"
+        qasm_path.write_text(source, encoding="utf-8")
+        qiskit_path = save_qiskit_script(configuration_dir, source)
+        row.update(qasm=source, qasm_path=str(qasm_path),
+                   qiskit_path=qiskit_path, qiskit_source=Path(qiskit_path).read_text(encoding="utf-8"),
+                   comparison_metadata=comparison_metadata(circuit), circuit=circuit_info(circuit))
+        diagrams.append(f"Configuration {row['label']}\n{circuit.draw(output='text')}")
+    (directory / "circuit.txt").write_text("\n\n".join(diagrams) + "\n", encoding="utf-8")
+    # One call is essential: the helper spawns independent streams for the full set.
+    counts, sampling = sample_configurations(circuits, shots=args.shots, seed=args.seed)
+    for row, histogram, seed in zip(rows, counts, sampling["configuration_seeds"], strict=True):
+        row.update(counts=histogram, configuration_seed=seed)
+    response = {
+        "run_id": directory.name, "title": args.title or "CHSH Bell inequality experiment",
+        "created_at": started_at, "completed_at": now(),
+        "duration_seconds": round(time.monotonic() - started, 6),
+        "status": "DONE", "hardware": False, "backend": "local_statevector_simulator",
+        "shots": args.shots, "seed": args.seed, "sampling": sampling, "qubits": 2,
+        "versions": {**sdk_versions(), "numpy": importlib.metadata.version("numpy")},
+        "artifacts": str(directory), "measurement_convention": MEASUREMENT_CONVENTION,
+        "state_preparation": "bell_phi_plus", "noise_model": {"type": "ideal_statevector"},
+        "correlators": rows, "chsh_ideal": sum(row["sign_in_chsh"] * row["theory"] for row in rows),
+    }
+    # Count-derived science is persisted even if subsequent HTML generation fails.
+    prepare_chsh_report(response)
+    return finish_report(response, directory, "receipt.json")
+
+
 def doctor(args):
     response = {"channel": "ibm_quantum_platform", "python": sys.version.split()[0],
                 "versions": {package: importlib.metadata.version(package)
@@ -399,6 +448,13 @@ def bounded_integer(minimum, maximum):
     return parse
 
 
+def nonnegative_integer(value):
+    number = int(value)
+    if number < 0:
+        raise argparse.ArgumentTypeError("The simulation seed must be a nonnegative integer.")
+    return number
+
+
 def parser():
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest="command", required=True)
@@ -435,6 +491,16 @@ def parser():
     experiment.add_argument("--request", default="QAOA Max-Cut on a 5-node graph")
     experiment.add_argument("--shots", type=bounded_integer(1, 100000), default=1024)
     experiment.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
+    bell_test = commands.add_parser("chsh", help="Simulate four CHSH configurations locally with independent seeds")
+    bell_test.add_argument("--shots", type=bounded_integer(1, 100000), default=1024,
+                           help="Shots per measurement configuration")
+    bell_test.add_argument("--seed", type=nonnegative_integer, default=42, help="Root seed for independent streams")
+    for option, default in (("alice-a", 0.0), ("alice-a-prime", math.pi / 4),
+                            ("bob-b", math.pi / 8), ("bob-b-prime", 3 * math.pi / 8)):
+        bell_test.add_argument("--" + option, type=float, default=default, metavar="RADIANS",
+                               help="Basis angle theta; measure RY(-2 theta) then Z")
+    bell_test.add_argument("--title", help="Experiment description for the native HTML report")
+    bell_test.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
     comparison = commands.add_parser("compare", help="Compare saved simulator/hardware count distributions")
     comparison.add_argument("--left", type=Path, required=True)
     comparison.add_argument("--right", type=Path, required=True)
@@ -464,6 +530,8 @@ def main(argv=None):
             result = inspect_job(args)
         elif args.command == "qaoa":
             result = qaoa(args)
+        elif args.command == "chsh":
+            result = chsh(args)
         elif args.command == "report":
             result = render_report(args)
         elif args.command == "poll-jobs":
