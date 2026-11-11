@@ -27,6 +27,13 @@ Skill examples do not authorize QPU submissions or bypass this project's
 credential, job-tracking or reporting rules. Provenance and the pinned upstream
 revision are recorded in `.agents/qiskit-skills.json`.
 
+Some unmodified upstream references use `.claude/skills/<name>/...`; for the
+bundled skills resolve that prefix to `.agents/skills/<name>/...` here. Resolve
+skill-relative resources against their containing skill directory. External URLs
+remain external: a local companion is not a fallback for an unavailable primary
+guide. The review cases and update process are documented in `docs/skills.md`.
+Resource integration checks do not establish actual model skill-selection behavior.
+
 At the beginning of every new chat, run `scripts/dam/quantum onboarding` before
 answering the first user message. Perform startup checks silently; do not narrate
 file reads or internal protocols. Before the first visible reply, use tool calls

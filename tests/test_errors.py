@@ -38,6 +38,25 @@ def output(capsys, category, *, error=None):
     return result
 
 
+def completed_with_dashboard_error(capsys, category, *, error=None):
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert PRIVATE not in captured.out
+    result = json.loads(captured.out)
+    assert result["status"] == "DONE" and result["hardware"] is False
+    assert sum(result["counts"].values()) == result["shots"]
+    assert result["dashboard_error_category"] == category
+    assert result["dashboard_next_step"] == NEXT_STEPS[category]
+    if error:
+        assert result["dashboard_error"] == error
+    filename = "experiment.json" if result["receipt_type"] == "qaoa" else "receipt.json"
+    saved = Path(result["artifacts"]) / filename
+    assert json.loads(saved.read_text()) == result
+    assert PRIVATE not in saved.read_text()
+    assert Path(result["report_path"]).is_file()
+    return result
+
+
 @pytest.mark.parametrize("exception,category", [
     (ValueError, "local_input"), (UnicodeError, "local_input"),
     (FileNotFoundError, "filesystem"), (PermissionError, "filesystem"), (OSError, "filesystem"),
@@ -126,8 +145,8 @@ def test_execution_rendering_failures_have_relevant_actions(monkeypatch, tmp_pat
     from qiskit_lab import execution_visualization
 
     monkeypatch.setattr(execution_visualization, "render_execution_dashboard", Mock(side_effect=exception(PRIVATE)))
-    assert cli.main(["execute", "--example", "bell", "--shots", "1", "--output-dir", str(tmp_path)]) == 1
-    output(capsys, category, error=exception.__name__)
+    assert cli.main(["execute", "--example", "bell", "--shots", "1", "--output-dir", str(tmp_path)]) == 0
+    completed_with_dashboard_error(capsys, category, error=exception.__name__)
 
 
 def test_local_sampler_failure_is_not_ibm(monkeypatch, tmp_path, capsys):
@@ -141,8 +160,8 @@ def test_qaoa_renderer_is_not_mistaken_for_input(monkeypatch, tmp_path, capsys, 
     from qiskit_lab import experiment_engine
 
     monkeypatch.setattr(experiment_engine, "_render_dashboard", Mock(side_effect=exception(PRIVATE)))
-    assert cli.main(["qaoa", "--request", "2-node graph", "--output-dir", str(tmp_path)]) == 1
-    output(capsys, category)
+    assert cli.main(["qaoa", "--request", "2-node graph", "--output-dir", str(tmp_path)]) == 0
+    completed_with_dashboard_error(capsys, category, error=exception.__name__)
 
 
 @pytest.mark.parametrize("command,contents,category", [
@@ -223,18 +242,60 @@ def test_ambiguous_submission_warning_survives_all_failure_categories(monkeypatc
                      "--output-dir", str(tmp_path)]) == 1
     result = output(capsys, "dependency" if exception is ImportError else "ibm")
     assert SUBMISSION_WARNING in result["next_step"]
+    assert result["submission_outcome"] == "unknown"
+    assert result["run_id"]
+    assert "recover-submission" in result["next_step"]
     sampler.run.assert_called_once()
 
 
 def test_accepted_job_storage_failure_warns_without_resubmission(monkeypatch, tmp_path, capsys):
+    from qiskit_lab import submission
+
     sampler = hardware(monkeypatch)
     sampler.run.return_value.job_id.return_value = "accepted-test-job"
-    monkeypatch.setattr(cli, "save_json", Mock(side_effect=PermissionError(PRIVATE)))
+    save = submission.save_durable
+
+    def fail_after_acceptance(path, value):
+        if value.get("job_id"):
+            raise PermissionError(PRIVATE)
+        save(path, value)
+
+    monkeypatch.setattr(submission, "save_durable", fail_after_acceptance)
     assert cli.main(["execute", "--example", "bell", "--hardware", "--backend", "ibm_test",
                      "--output-dir", str(tmp_path)]) == 1
     result = output(capsys, "filesystem")
     assert SUBMISSION_WARNING in result["next_step"]
+    assert result["job_id"] == "accepted-test-job"
+    assert result["submission_outcome"] == "accepted"
     sampler.run.assert_called_once()
+
+
+def test_intent_storage_failure_is_not_mistaken_for_an_attempted_submission(monkeypatch, tmp_path, capsys):
+    from qiskit_lab import submission
+
+    sampler = hardware(monkeypatch)
+    monkeypatch.setattr(submission, "save_durable", Mock(side_effect=PermissionError(PRIVATE)))
+    assert cli.main(["execute", "--example", "bell", "--hardware", "--backend", "ibm_test",
+                     "--output-dir", str(tmp_path)]) == 1
+    result = output(capsys, "filesystem")
+    assert result["status"] == "NOT_SUBMITTED"
+    assert result["submission_outcome"] == "not_attempted"
+    assert SUBMISSION_WARNING not in result["next_step"]
+    sampler.run.assert_not_called()
+
+
+@pytest.mark.parametrize("next_step", [None, SUBMISSION_WARNING, "Query the same job ID; do not resubmit."])
+def test_structured_submission_error_without_cause_keeps_identity(monkeypatch, capsys, next_step):
+    response = {"job_id": "accepted-test-job", "run_id": "saved-run", "submission_outcome": "accepted",
+                "status": "SUBMITTED", "error_category": "ibm"}
+    if next_step is not None:
+        response["next_step"] = next_step
+    monkeypatch.setattr(cli, "execute", Mock(side_effect=cli.SubmissionError(response)))
+    assert cli.main(["execute", "--example", "bell"]) == 1
+    result = output(capsys, "internal", error="SubmissionError")
+    assert result["job_id"] == "accepted-test-job" and result["run_id"] == "saved-run"
+    assert result["submission_outcome"] == "accepted"
+    assert result["next_step"].count(SUBMISSION_WARNING) == 1
 
 
 @pytest.mark.parametrize("operational,qubits,action", [
@@ -342,7 +403,8 @@ def test_backend_renderer_failure_is_not_ibm(monkeypatch, tmp_path, capsys):
 
 
 @pytest.mark.parametrize("module", ["qiskit", "qiskit_ibm_runtime", "qiskit_lab.comparison"])
-def test_missing_startup_dependency_has_safe_json_in_a_fresh_process(module, tmp_path):
+@pytest.mark.parametrize("help_requested", [False, True])
+def test_missing_startup_dependency_has_safe_json_or_help_in_a_fresh_process(module, tmp_path, help_requested):
     script = """
 import builtins
 import sys
@@ -353,13 +415,51 @@ def missing(name, *args, **kwargs):
     return original(name, *args, **kwargs)
 builtins.__import__ = missing
 from qiskit_lab.cli import main
-raise SystemExit(main(["execute", "--example", "bell"]))
+raise SystemExit(main(["--help"] if sys.argv[3] == "True" else ["execute", "--example", "bell"]))
 """
-    process = subprocess.run([sys.executable, "-c", script, module, PRIVATE], cwd=tmp_path,
+    process = subprocess.run([sys.executable, "-c", script, module, PRIVATE, str(help_requested)], cwd=tmp_path,
                              capture_output=True, text=True, timeout=30)
-    assert process.returncode == 1
+    assert process.returncode == (0 if help_requested else 1)
     assert process.stderr == ""
     assert PRIVATE not in process.stdout
+    if help_requested:
+        assert "usage:" in process.stdout and "chsh" in process.stdout
+        return
     result = json.loads(process.stdout)
     assert result == {"error": "ModuleNotFoundError", "error_category": "dependency",
                       "next_step": NEXT_STEPS["dependency"]}
+
+
+def test_successful_dashboard_retry_clears_obsolete_diagnostics(tmp_path):
+    response = {"status": "DONE", "hardware": False, "counts": {"0": 1}}
+    render = Mock(side_effect=RuntimeError(PRIVATE))
+    cli.finish_dashboard(response, tmp_path, "receipt.json", render, "results.png")
+    assert response["dashboard_error_category"] == "rendering"
+    source = tmp_path / "rendered.png"
+    source.write_bytes(b"synthetic-rendered-image")
+    cli.finish_dashboard(response, tmp_path, "receipt.json", lambda: source, "results.png")
+    assert not {"dashboard_error", "dashboard_error_category", "dashboard_next_step"} & response.keys()
+    assert response["counts"] == {"0": 1}
+    assert Path(response["dashboard_path"]).is_file()
+    assert json.loads((tmp_path / "receipt.json").read_text()) == response
+
+
+def test_native_chsh_sampling_failure_is_local_execution(monkeypatch, tmp_path, capsys):
+    from qiskit_lab import sampling
+
+    monkeypatch.setattr(sampling, "sample_configurations", Mock(side_effect=RuntimeError(PRIVATE)))
+    assert cli.main(["chsh", "--shots", "1", "--output-dir", str(tmp_path)]) == 1
+    output(capsys, "local_execution", error="RuntimeError")
+    assert not list(tmp_path.rglob("receipt.json"))
+
+
+@pytest.mark.parametrize("command,exception", [
+    (["execute", "--example", "bell"], cli.ReceiptValidationError),
+    (["recover-submission", "test-run"], cli.RecoveryError),
+])
+def test_owned_validation_errors_keep_safe_guidance(command, exception, monkeypatch, capsys):
+    target = "execute" if command[0] == "execute" else "recover_submission"
+    monkeypatch.setattr(cli, target, Mock(side_effect=exception("Controlled public validation guidance.")))
+    assert cli.main(command) == 1
+    result = output(capsys, "local_input", error="Controlled public validation guidance.")
+    assert result["next_step"] == NEXT_STEPS["local_input"]

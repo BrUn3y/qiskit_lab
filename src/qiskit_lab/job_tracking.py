@@ -8,11 +8,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from qiskit_lab.errors import error_response
+from qiskit_lab.receipts import IMPORTED, ReceiptValidationError, validate_receipt
 
 TERMINAL = {"DONE", "ERROR", "CANCELLED"}
 
 
-def receipts(base):
+def receipts(base, *, errors=None):
     """Read only application-owned receipts, never SDK accounts or arbitrary files."""
     base = Path(base)
     if not base.exists():
@@ -23,17 +24,32 @@ def receipts(base):
             continue
         try:
             value = json.loads(path.read_text())
-            if isinstance(value, dict) and value.get("hardware") and value.get("job_id"):
+            if (isinstance(value, dict) and value.get("hardware") and value.get("job_id")
+                    and value.get("report_source") != IMPORTED):
+                try:
+                    validate_receipt(value)
+                except ReceiptValidationError as error:
+                    if errors is None:
+                        raise
+                    errors.append({"job_id": value["job_id"], "error": type(error).__name__,
+                                   "error_category": "local_input", "next_step": str(error)})
+                    continue
                 result.append((path, value))
+        except ReceiptValidationError:
+            raise
         except (OSError, ValueError):
             continue
     return result
 
 
 def find_receipt(base, job_id):
-    for path, receipt in receipts(base):
+    errors: list[dict] = []
+    for path, receipt in receipts(base, errors=errors):
         if receipt["job_id"] == job_id:
             return path.parent, receipt
+    for error in errors:
+        if error["job_id"] == job_id:
+            raise ReceiptValidationError(error["next_step"])
     return None, {}
 
 
@@ -79,8 +95,9 @@ def poll_jobs(args):
         fcntl.flock(lock, fcntl.LOCK_EX)
         queue_path = base / "job-notifications.json"
         queue = json.loads(queue_path.read_text()) if queue_path.exists() else []
+        errors: list[dict] = []
         if args.ack:
-            for _, receipt in receipts(base):
+            for _, receipt in receipts(base, errors=errors):
                 if (receipt["job_id"] in args.ack and receipt.get("report_path")
                         and receipt.get("status") in TERMINAL
                         and not any(e["job_id"] == receipt["job_id"] for e in queue)):
@@ -91,9 +108,8 @@ def poll_jobs(args):
                 if entry["job_id"] in args.ack:
                     entry["acknowledged_at"] = now()
             save_json(queue_path, queue)
-            return {"notifications": [e for e in queue if not e.get("acknowledged_at")], "errors": []}
-        errors = []
-        tracked = receipts(base)
+            return {"notifications": [e for e in queue if not e.get("acknowledged_at")], "errors": errors}
+        tracked = receipts(base, errors=errors)
         # Rotate by oldest query so a busy workspace does not starve later jobs.
         tracked.sort(key=lambda pair: pair[1].get("queried_at", pair[1].get("created_at", "")))
         checked = 0

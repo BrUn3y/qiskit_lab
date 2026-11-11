@@ -22,6 +22,10 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked
+      - name: Check deterministic bundled-skill resource integration (no model evaluation)
+        run: |
+          uv run --locked python scripts/dam/qiskit_skills.py verify
+          uv run --locked python scripts/dam/skill_evaluations.py --check
       - run: uv run --locked pytest -q --cov --cov-report=term-missing --cov-report=xml:coverage.xml
       - name: Preserve full job-tracking line and branch coverage
         run: uv run --locked coverage report --include='*/job_tracking.py' --fail-under=100
