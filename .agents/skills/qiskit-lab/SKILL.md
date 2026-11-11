@@ -162,3 +162,8 @@ job ID (hardware only), observed status, UTC timestamp and artifact paths.
 Explain queue delays and allow later job inspection. Never fabricate a QPU,
 job, measurement result, or successful connection. Do not log raw SDK errors
 that may contain request bodies; the CLI reports safe exception class names.
+Use `error_category` and `next_step` to distinguish local input, filesystem,
+rendering, dependency and IBM failures. Surface `report_next_step` for a
+recoverable HTML failure. Do not suggest credential changes for local errors,
+and never resubmit because a visualization or result download failed. After an
+ambiguous hardware response, inspect existing tagged jobs before any retry.

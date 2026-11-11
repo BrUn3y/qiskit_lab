@@ -15,6 +15,8 @@ from qiskit import QuantumCircuit
 from qiskit.qasm3 import dumps as qasm3_dumps
 from qiskit.quantum_info import Statevector
 
+from qiskit_lab.errors import failure_context
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -191,7 +193,8 @@ def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAE
     """Optimize a p=1 QAOA Max-Cut circuit and validate it exactly."""
     if shots < 1:
         raise ValueError("QAOA requires at least one shot.")
-    node_count, edges = parse_maxcut_graph(request)
+    with failure_context("local_input"):
+        node_count, edges = parse_maxcut_graph(request)
     best_expectation = -1.0
     best_gamma = 0.0
     best_beta = 0.0
@@ -225,16 +228,17 @@ def run_maxcut_qaoa(request: str, *, shots: int = 1024, seed: int = 42) -> QAOAE
     exact_cut, _ = _exact_solution(node_count, edges)
     ratio = best_expectation / exact_cut if exact_cut else 1.0
     measured_circuit = _qaoa_circuit(node_count, edges, best_gamma, best_beta, measurements=True)
-    dashboard_path = _render_dashboard(
-        node_count=node_count,
-        edges=edges,
-        best_bitstring=best_bitstring,
-        counts=counts,
-        expected_cut=best_expectation,
-        exact_cut=exact_cut,
-        approximation_ratio=ratio,
-        trace=trace,
-    )
+    with failure_context("rendering"):
+        dashboard_path = _render_dashboard(
+            node_count=node_count,
+            edges=edges,
+            best_bitstring=best_bitstring,
+            counts=counts,
+            expected_cut=best_expectation,
+            exact_cut=exact_cut,
+            approximation_ratio=ratio,
+            trace=trace,
+        )
     return QAOAExperimentResult(
         node_count=node_count,
         edges=edges,

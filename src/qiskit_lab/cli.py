@@ -20,21 +20,23 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from qiskit import QuantumCircuit, qasm2, qasm3
-from qiskit.primitives import StatevectorSampler
-from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
-from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
-
-from qiskit_lab.comparison import ComparisonError, compare_receipts, comparison_metadata
+from qiskit_lab.errors import UserError, error_response, failure_context
 from qiskit_lab.reports import write_report
+
+_startup_failure = None
+try:
+    from qiskit import QuantumCircuit, qasm2, qasm3
+    from qiskit.primitives import StatevectorSampler
+    from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
+    from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
+
+    from qiskit_lab.comparison import ComparisonError, compare_receipts, comparison_metadata
+except ImportError as error:
+    _startup_failure = error_response(error)
 
 ROOT = Path.cwd()
 logging.getLogger("qiskit_ibm_runtime").setLevel(logging.CRITICAL)
-
-
-class UserError(Exception):
-    """An actionable error safe to display to the user."""
 
 
 def runtime_service():
@@ -100,11 +102,15 @@ def sdk_versions():
 def finish_report(response, directory, filename):
     # Persist scientific results even if presentation generation fails.
     response.pop("report_error", None)
+    response.pop("report_error_category", None)
+    response.pop("report_next_step", None)
     save_json(directory / filename, response)
     try:
         write_report(response, directory)
     except Exception as error:  # noqa: BLE001 - Report failures must never lose accepted job/results
-        response["report_error"] = type(error).__name__
+        diagnostic = error_response(error, default="rendering")
+        response.update(report_error=diagnostic["error"], report_error_category=diagnostic["error_category"],
+                        report_next_step=diagnostic["next_step"])
     save_json(directory / filename, response)
     return response
 
@@ -147,9 +153,11 @@ def example_circuit(name, qubits=3):
 def load_circuit(args):
     if args.example:
         return example_circuit(args.example, args.qubits)
-    source = Path(args.qasm).read_text()
+    source = Path(args.qasm).read_text(encoding="utf-8")
     try:
         circuit = qasm3.loads(source) if re.search(r"^\s*OPENQASM\s+3", source, re.MULTILINE) else qasm2.loads(source)
+    except ImportError:
+        raise
     except Exception as error:
         raise UserError("Invalid or unsupported OpenQASM circuit; use OpenQASM 2 or 3.") from error
     if circuit.num_parameters:
@@ -192,35 +200,43 @@ def execute(args):
     receipt.update(circuit_info(circuit), versions=sdk_versions(), title=title,
                    comparison_metadata=comparison_metadata(circuit))
     if args.hardware:
-        service = runtime_service()
-        backend = (service.backend(args.backend) if args.backend else
-                   service.least_busy(operational=True, simulator=False, min_num_qubits=circuit.num_qubits))
-        if not backend.status().operational:
-            raise UserError("The selected IBM Quantum backend is not operational.")
-        if backend.num_qubits < circuit.num_qubits:
-            raise UserError("The selected backend has too few qubits.")
-        isa_circuit = generate_preset_pass_manager(backend=backend, optimization_level=1).run(circuit)
+        with failure_context("ibm"):
+            service = runtime_service()
+            backend = (service.backend(args.backend) if args.backend else
+                       service.least_busy(operational=True, simulator=False, min_num_qubits=circuit.num_qubits))
+            if not backend.status().operational:
+                raise UserError("The selected IBM Quantum backend is not operational.", category="ibm",
+                                next_step="Select an operational accessible backend before submitting.")
+            if backend.num_qubits < circuit.num_qubits:
+                raise UserError("The selected backend has too few qubits.", category="ibm",
+                                next_step="Select an accessible backend with enough qubits before submitting.")
+            isa_circuit = generate_preset_pass_manager(backend=backend, optimization_level=1).run(circuit)
         (directory / "isa-circuit.qasm").write_text(qasm3.dumps(isa_circuit))
         receipt.update(isa_qubits=isa_circuit.num_qubits, isa_depth=isa_circuit.depth(),
                        isa_gate_counts=dict(isa_circuit.count_ops()), max_execution_time=args.max_execution_time)
-        sampler = SamplerV2(mode=backend, options={"max_execution_time": args.max_execution_time,
-                                                  "environment": {"job_tags": ["qiskit-lab-dam"]}})
+        with failure_context("ibm"):
+            sampler = SamplerV2(mode=backend, options={"max_execution_time": args.max_execution_time,
+                                                      "environment": {"job_tags": ["qiskit-lab-dam"]}})
         # Never retry run(): a network error may occur after IBM accepted a job.
-        job = sampler.run([isa_circuit], shots=args.shots)
-        receipt.update(backend=backend.name, job_id=job.job_id(), status="SUBMITTED")
+        with failure_context("ibm", submission_attempted=True):
+            job = sampler.run([isa_circuit], shots=args.shots)
+            receipt.update(backend=backend.name, job_id=job.job_id(), status="SUBMITTED")
         # Persist the accepted job immediately, before any status/result requests.
-        save_json(directory / "receipt.json", receipt)
+        with failure_context("filesystem", submission_attempted=True):
+            save_json(directory / "receipt.json", receipt)
         return receipt
-    result = StatevectorSampler(seed=42).run([circuit], shots=args.shots).result()
+    with failure_context("local_execution"):
+        result = StatevectorSampler(seed=42).run([circuit], shots=args.shots).result()
     receipt.update(backend="local_statevector_simulator", status="DONE", counts=counts_from_result(result)[0])
-    from qiskit_lab.execution_visualization import render_execution_dashboard
+    with failure_context("rendering"):
+        from qiskit_lab.execution_visualization import render_execution_dashboard
 
-    image = render_execution_dashboard(circuit, receipt["counts"], backend_name=receipt["backend"],
-                                       job_id=receipt["run_id"], shots=args.shots)
-    try:
-        shutil.copyfile(image, directory / "results.png")
-    finally:
-        image.unlink(missing_ok=True)
+        image = render_execution_dashboard(circuit, receipt["counts"], backend_name=receipt["backend"],
+                                           job_id=receipt["run_id"], shots=args.shots)
+        try:
+            shutil.copyfile(image, directory / "results.png")
+        finally:
+            image.unlink(missing_ok=True)
     receipt["dashboard_path"] = str(directory / "results.png")
     receipt.update(completed_at=now(), duration_seconds=round(time.monotonic() - started, 6), seed=42)
     return finish_report(receipt, directory, "receipt.json")
@@ -235,21 +251,27 @@ def inspect_job(args):
     directory = directory or job_directory(base, args.job_id)
     if getattr(args, "title", None):
         response["title"] = args.title
-    job = runtime_service().job(args.job_id)
-    backend = job.backend()
-    response.update(job_id=job.job_id(), backend=backend.name, status=str(job.status()), queried_at=now(),
-                    hardware=True, artifacts=str(directory))
+    with failure_context("ibm"):
+        job = runtime_service().job(args.job_id)
+        backend = job.backend()
+        response.update(job_id=job.job_id(), backend=backend.name, status=str(job.status()), queried_at=now(),
+                        hardware=True, artifacts=str(directory))
     response.pop("poll_error", None)
+    response.pop("poll_error_category", None)
+    response.pop("poll_next_step", None)
     if response["status"] == "DONE" or (args.wait and response["status"] not in {"ERROR", "CANCELLED"}):
         try:
-            response["counts"] = counts_from_result(job.result(timeout=args.wait or 30))
-            response["status"] = str(job.status())
+            with failure_context("ibm"):
+                response["counts"] = counts_from_result(job.result(timeout=args.wait or 30))
+                response["status"] = str(job.status())
             response.pop("result_error", None)
+            response.pop("result_error_category", None)
             response.pop("next_step", None)
         except Exception as error:  # noqa: BLE001 - SDK failures must never expose credentials
             # The accepted job is still identified even after a timeout/failure.
-            response["result_error"] = type(error).__name__
-            response["next_step"] = "Query this same job ID again; do not resubmit the circuit."
+            diagnostic = error_response(error, default="ibm")
+            response.update(result_error=diagnostic["error"], result_error_category=diagnostic["error_category"])
+            response["next_step"] = diagnostic["next_step"] + " Query this same job ID again; do not resubmit the circuit."
     if response["status"] in {"DONE", "ERROR", "CANCELLED"}:
         response.update(job_metadata(job))
         # A failed result download is retryable; do not publish an empty success report.
@@ -298,11 +320,13 @@ def doctor(args):
                                                    os.environ.get("QISKIT_IBM_RUNTIME_APIKEY")),
                 "saved_account_file_exists": (Path.home() / ".qiskit/qiskit-ibm.json").exists()}
     if args.online:
-        response["backends"] = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
+        with failure_context("ibm"):
+            response["backends"] = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
         response["queried_at"] = now()
         response["connected"] = bool(response["backends"])
         if not response["connected"]:
-            raise UserError("IBM accepted the account but no hardware backends are accessible; check the instance CRN.")
+            raise UserError("IBM accepted the account but no hardware backends are accessible; check the instance CRN.",
+                            category="ibm")
     return response
 
 
@@ -323,14 +347,16 @@ def onboarding():
     if not available:
         return request
     try:
-        backends = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
+        with failure_context("ibm"):
+            backends = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
     except AccountNotFoundError:
         # IBM's SDK can create an empty account file before an account is saved.
         # File existence alone must not imply that the owner configured a key.
         return request
     except Exception as error:  # noqa: BLE001 - Return safe SDK error classes without request bodies
+        diagnostic = error_response(error, default="ibm")
         return {"status": "connection_error", "channel": "ibm_quantum_platform",
-                "error": type(error).__name__, "hardware_ready": False,
+                **diagnostic, "hardware_ready": False,
                 "message": "An account is configured, but the connection could not be verified. "
                            "Check the credentials, instance and network; do not paste keys into chat.",
                 "setup_command": setup}
@@ -339,19 +365,21 @@ def onboarding():
 
 
 def inspect_backend(args):
-    from qiskit_lab.backend_visualization import render_backend_dashboard
-
-    backend = runtime_service().backend(args.name)
-    response = backend_summary(backend)
-    response.update(queried_at=now(), operations=sorted(backend.operation_names),
-                    coupling_map=list(backend.coupling_map.get_edges()) if backend.coupling_map else [])
+    with failure_context("ibm"):
+        backend = runtime_service().backend(args.name)
+        response = backend_summary(backend)
+        response.update(queried_at=now(), operations=sorted(backend.operation_names),
+                        coupling_map=list(backend.coupling_map.get_edges()) if backend.coupling_map else [])
     if args.dashboard:
         directory = artifact_dir(args.output_dir)
-        image = Path(render_backend_dashboard(backend))
-        try:
-            shutil.copyfile(image, directory / "backend.png")
-        finally:
-            image.unlink(missing_ok=True)
+        with failure_context("rendering"):
+            from qiskit_lab.backend_visualization import render_backend_dashboard
+
+            image = Path(render_backend_dashboard(backend))
+            try:
+                shutil.copyfile(image, directory / "backend.png")
+            finally:
+                image.unlink(missing_ok=True)
         response["dashboard_path"] = str(directory / "backend.png")
         save_json(directory / "backend.json", response)
     return response
@@ -361,7 +389,8 @@ def compare(args):
     try:
         response = compare_receipts(args.left, args.right, allow_unverified=args.allow_unverified)
     except ComparisonError as error:
-        raise UserError(str(error)) from error
+        category = "filesystem" if isinstance(error.__cause__, OSError) else "local_input"
+        raise UserError(str(error), category=category) from error
     if args.output:
         save_json(args.output, response)
     return response
@@ -371,21 +400,29 @@ def render_report(args):
     """Regenerate a report from a public receipt without contacting IBM."""
     try:
         response = json.loads(args.input.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as error:
+    except (UnicodeError, ValueError) as error:
         raise UserError("Cannot read the input receipt; provide a valid public JSON result file.") from error
     if not isinstance(response, dict):
         raise UserError("The input receipt must be a JSON object.")
     # Validate before creating output files; preserve the original input receipt.
     if response.get("status") not in {"DONE", "ERROR", "CANCELLED"}:
         raise UserError("A completion report requires a terminal job state in the input receipt.")
+    if "hardware" in response and type(response["hardware"]) is not bool:
+        raise UserError("The hardware field must be a boolean when provided.")
+    from qiskit_lab.chsh_reporting import prepare_chsh_report
+
+    try:
+        prepare_chsh_report(response)
+    except ValueError as error:
+        raise UserError("Invalid CHSH receipt; check the four labels, binary counts, signs and finite settings.") from error
     directory = artifact_dir(args.output_dir)
     response.pop("report_error", None)
+    response.pop("report_error_category", None)
+    response.pop("report_next_step", None)
     response["report_source"] = "imported_receipt_not_verified_online"
     response["artifacts"] = str(directory)
-    try:
+    with failure_context("rendering"):
         write_report(response, directory)
-    except ValueError as error:
-        raise UserError(str(error)) from error
     save_json(directory / "report.json", response)
     return response
 
@@ -399,8 +436,14 @@ def bounded_integer(minimum, maximum):
     return parse
 
 
+class SafeArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        # argparse's default message can echo arbitrary command-line input.
+        super().error("Invalid command options. Run qiskit-lab <command> --help and correct the arguments.")
+
+
 def parser():
-    cli = argparse.ArgumentParser(description=__doc__)
+    cli = SafeArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest="command", required=True)
     commands.add_parser("onboarding", help="Check whether the first chat needs IBM Quantum configuration")
     check = commands.add_parser("doctor", help="Check packages and optionally IBM connectivity")
@@ -449,13 +492,18 @@ def parser():
 
 def main(argv=None):
     args = parser().parse_args(argv)
+    if _startup_failure is not None:
+        print(json.dumps(_startup_failure))
+        return 1
     try:
         if args.command == "onboarding":
             result = onboarding()
         elif args.command == "doctor":
             result = doctor(args)
         elif args.command == "backends":
-            result = {"queried_at": now(), "backends": [backend_summary(b) for b in runtime_service().backends(simulator=False)]}
+            with failure_context("ibm"):
+                result = {"queried_at": now(),
+                          "backends": [backend_summary(b) for b in runtime_service().backends(simulator=False)]}
         elif args.command == "backend":
             result = inspect_backend(args)
         elif args.command == "execute":
@@ -476,14 +524,8 @@ def main(argv=None):
             result = compare(args)
         print(json.dumps(result, indent=2, default=str))
         return 0
-    except UserError as error:
-        print(json.dumps({"error": str(error)}))
     except Exception as error:  # noqa: BLE001 - CLI boundary redacts SDK request bodies
-        # SDK exception messages can contain request bodies or credentials.
-        print(json.dumps({"error": type(error).__name__, "next_step":
-                          "Check inputs, IBM Quantum credentials, instance CRN and DAM egress. "
-                          "If a hardware submission was attempted, inspect IBM jobs tagged qiskit-lab-dam "
-                          "before trying again."}))
+        print(json.dumps(error_response(error)))
     return 1
 
 

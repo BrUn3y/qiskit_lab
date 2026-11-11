@@ -413,6 +413,40 @@ submission after an uncertain response. See the job-retrieval and report
 instructions above. Offline tests use mocks for hardware contracts; passing CI
 does not establish real IBM connectivity or execute a QPU job.
 
+## Safe error diagnostics
+
+Command failures return JSON with `error`, `error_category`, and `next_step`.
+Categories distinguish `local_input`, `filesystem`, `rendering`, `dependency`,
+`ibm`, `local_execution`, and an `internal` fallback. Only application-authored
+validation messages are displayed verbatim. Other diagnostics use exception
+class names, never SDK bodies, request payloads, file contents, exception
+chains, missing-module names, or credential values.
+
+For local input failures, correct the options or public QASM/JSON receipt.
+For filesystem failures, check readable inputs, writable output/temp directories
+and disk space. For dependency failures, restore `uv sync --locked` (or the
+documented environment for an optional workflow). Rendering diagnostics refer
+to plotting/report dependencies and saved-receipt report regeneration, not
+credentials. IBM diagnostics refer to service/network and instance/backend
+access; never paste keys or raw SDK errors into an issue or chat.
+
+Exit codes are unchanged: successful commands return 0, handled command failures
+return 1, and argparse usage errors return 2. Usage errors now give a controlled
+`--help` action on stderr without echoing potentially sensitive argument values.
+Help remains available even when an SDK import fails. Recoverable HTML errors
+keep the existing successful command status and `report_error`, adding
+`report_error_category` and `report_next_step`; existing scientific receipts are
+preserved. Job result-download and poll errors similarly add safe categories
+and actions, cleared on recovery. Consumers should tolerate these additive fields.
+
+Once hardware submission starts, any failure warning still requires inspecting
+existing IBM jobs tagged `qiskit-lab-dam` before retrying. A lost response is not
+proof of rejection, including when the underlying exception resembles a local
+dependency failure or when saving an accepted ID fails. There are no automatic
+submission retries. Query an already accepted ID again after download failures.
+This diagnostic change does not add submission recovery or result-persistence
+features and does not prove live IBM access.
+
 ## Update an existing deployment
 
 For a kit-created agent, use DAM's **Kit Update** workflow and rerun the

@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+from qiskit_lab.errors import error_response
+
 TERMINAL = {"DONE", "ERROR", "CANCELLED"}
 
 
@@ -123,11 +125,13 @@ def poll_jobs(args):
                     else:
                         entry.update(details)
             except Exception as error:  # noqa: BLE001 - Preserve the job for another read-only query
-                errors.append({"job_id": receipt["job_id"], "error": type(error).__name__})
+                diagnostic = error_response(error, default="ibm")
+                errors.append({"job_id": receipt["job_id"], **diagnostic})
                 # Rotate failed queries too: stale/unavailable IDs must not
                 # permanently block jobs beyond the ten-query batch limit.
                 current = json.loads(path.read_text())
-                current.update(queried_at=now(), poll_error=type(error).__name__)
+                current.update(queried_at=now(), poll_error=diagnostic["error"],
+                               poll_error_category=diagnostic["error_category"], poll_next_step=diagnostic["next_step"])
                 save_json(path, current)
         save_json(queue_path, queue)
         return {"checked": checked, "notifications": [e for e in queue if not e.get("acknowledged_at")], "errors": errors}
