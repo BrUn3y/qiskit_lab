@@ -42,8 +42,11 @@ uv run --locked qiskit-lab doctor
 uv run --locked qiskit-lab execute --example bell --shots 256
 ```
 
-`doctor` reports installed SDK versions without contacting IBM unless you add
-`--online`. The execution command prints JSON with `hardware: false`,
+`doctor` reports installed SDK versions and optional capability metadata without
+reading credentials or contacting IBM unless you add `--online`. Missing optional
+packages do not fail a base check. For isolated, locked SQD/PySCF and fermionic
+profiles, see [Optional capabilities](docs/optional-capabilities.md).
+The execution command prints JSON with `hardware: false`,
 `backend: "local_statevector_simulator"`, `status: "DONE"`, and 256 total counts
 over Bell states `00` and `11`. Do not expect an exact 50/50 split at finite shots.
 It saves a receipt, QASM, reconstructed Python, PNG, and self-contained HTML under
