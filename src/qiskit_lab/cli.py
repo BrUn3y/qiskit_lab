@@ -27,8 +27,11 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
 
+from qiskit_lab.capabilities import PROFILES, optional_capabilities
 from qiskit_lab.comparison import ComparisonError, compare_receipts, comparison_metadata
+from qiskit_lab.receipts import IMPORTED, SCHEMA_VERSION, ReceiptValidationError, validate_receipt
 from qiskit_lab.reports import write_report
+from qiskit_lab.submission import RecoveryError, SubmissionError, prepare_intent, recover_submission, submit_once
 
 ROOT = Path.cwd()
 logging.getLogger("qiskit_ibm_runtime").setLevel(logging.CRITICAL)
@@ -100,14 +103,42 @@ def sdk_versions():
 
 def finish_report(response, directory, filename):
     # Persist scientific results even if presentation generation fails.
+    validate_receipt(response, for_report=True)
     response.pop("report_error", None)
     save_json(directory / filename, response)
     try:
         write_report(response, directory)
     except Exception as error:  # noqa: BLE001 - Report failures must never lose accepted job/results
         response["report_error"] = type(error).__name__
+        for field in ("report_path", "report_filename", "report_title"):
+            response.pop(field, None)
     save_json(directory / filename, response)
     return response
+
+
+def finish_dashboard(response, directory, filename, render, image_name):
+    # The completed receipt must exist before importing/rendering/copying a PNG.
+    validate_receipt(response, for_report=True)
+    save_json(directory / filename, response)
+    image = None
+    destination = directory / image_name
+    temporary = directory / f".{image_name}.{uuid.uuid4().hex}.tmp"
+    try:
+        image = Path(render())
+        shutil.copyfile(image, temporary)
+        temporary.replace(destination)
+        response["dashboard_path"] = str(destination)
+    except Exception as error:  # noqa: BLE001 - Presentation must not discard scientific results
+        response["dashboard_error"] = type(error).__name__
+    finally:
+        for path in (image, temporary):
+            if path is None:
+                continue
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as error:
+                response.setdefault("dashboard_error", type(error).__name__)
+    return finish_report(response, directory, filename)
 
 
 def example_circuit(name, qubits=3):
@@ -184,7 +215,8 @@ def execute(args):
     (directory / "circuit.qasm").write_text(source, encoding="utf-8")
     qiskit_path = save_qiskit_script(directory, source)
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
-    receipt = {"run_id": directory.name, "created_at": now(), "shots": args.shots,
+    receipt = {"schema_version": SCHEMA_VERSION, "receipt_type": "job" if args.hardware else "execution",
+               "run_id": directory.name, "created_at": now(), "shots": args.shots,
                "qubits": circuit.num_qubits, "hardware": args.hardware, "artifacts": str(directory),
                "qiskit_path": qiskit_path}
     title = getattr(args, "title", None) or (
@@ -203,28 +235,32 @@ def execute(args):
         isa_circuit = generate_preset_pass_manager(backend=backend, optimization_level=1).run(circuit)
         (directory / "isa-circuit.qasm").write_text(qasm3.dumps(isa_circuit))
         receipt.update(isa_qubits=isa_circuit.num_qubits, isa_depth=isa_circuit.depth(),
-                       isa_gate_counts=dict(isa_circuit.count_ops()), max_execution_time=args.max_execution_time)
+                       isa_gate_counts=dict(isa_circuit.count_ops()), max_execution_time=args.max_execution_time,
+                       backend=backend.name)
+        validate_receipt({**receipt, "status": "NOT_SUBMITTED"})
+        prepare_intent(receipt)
         sampler = SamplerV2(mode=backend, options={"max_execution_time": args.max_execution_time,
-                                                  "environment": {"job_tags": ["qiskit-lab-dam"]}})
+                                                  "environment": {"job_tags": receipt["submission"]["job_tags"]}})
         # Never retry run(): a network error may occur after IBM accepted a job.
-        job = sampler.run([isa_circuit], shots=args.shots)
-        receipt.update(backend=backend.name, job_id=job.job_id(), status="SUBMITTED")
-        # Persist the accepted job immediately, before any status/result requests.
-        save_json(directory / "receipt.json", receipt)
-        return receipt
+        response = submit_once(sampler, isa_circuit, receipt, directory)
+        try:
+            validate_receipt(response)
+        except ReceiptValidationError as error:
+            raise SubmissionError({**response, "error": type(error).__name__,
+                                   "next_step": "IBM returned this accepted job ID. Preserve it and query "
+                                                "the same ID; do not resubmit."}) from error
+        return response
     result = StatevectorSampler(seed=42).run([circuit], shots=args.shots).result()
     receipt.update(backend="local_statevector_simulator", status="DONE", counts=counts_from_result(result)[0])
-    from qiskit_lab.execution_visualization import render_execution_dashboard
-
-    image = render_execution_dashboard(circuit, receipt["counts"], backend_name=receipt["backend"],
-                                       job_id=receipt["run_id"], shots=args.shots)
-    try:
-        shutil.copyfile(image, directory / "results.png")
-    finally:
-        image.unlink(missing_ok=True)
-    receipt["dashboard_path"] = str(directory / "results.png")
     receipt.update(completed_at=now(), duration_seconds=round(time.monotonic() - started, 6), seed=42)
-    return finish_report(receipt, directory, "receipt.json")
+
+    def render():
+        from qiskit_lab.execution_visualization import render_execution_dashboard
+
+        return render_execution_dashboard(circuit, receipt["counts"], backend_name=receipt["backend"],
+                                          job_id=receipt["run_id"], shots=args.shots)
+
+    return finish_dashboard(receipt, directory, "receipt.json", render, "results.png")
 
 
 def inspect_job(args):
@@ -239,7 +275,8 @@ def inspect_job(args):
     job = runtime_service().job(args.job_id)
     backend = job.backend()
     response.update(job_id=job.job_id(), backend=backend.name, status=str(job.status()), queried_at=now(),
-                    hardware=True, artifacts=str(directory))
+                    hardware=True, artifacts=str(directory), schema_version=SCHEMA_VERSION, receipt_type="job")
+    response.pop("report_source", None)
     response.pop("poll_error", None)
     if response["status"] == "DONE" or (args.wait and response["status"] not in {"ERROR", "CANCELLED"}):
         try:
@@ -251,6 +288,7 @@ def inspect_job(args):
             # The accepted job is still identified even after a timeout/failure.
             response["result_error"] = type(error).__name__
             response["next_step"] = "Query this same job ID again; do not resubmit the circuit."
+    validate_receipt(response)
     if response["status"] in {"DONE", "ERROR", "CANCELLED"}:
         response.update(job_metadata(job))
         # A failed result download is retryable; do not publish an empty success report.
@@ -268,19 +306,17 @@ def inspect_job(args):
 def qaoa(args):
     started = time.monotonic()
     started_at = now()
-    from qiskit_lab.experiment_engine import run_maxcut_qaoa
+    from qiskit_lab.experiment_engine import render_qaoa_dashboard, run_maxcut_qaoa
 
-    result = run_maxcut_qaoa(args.request, shots=args.shots)
+    result = run_maxcut_qaoa(args.request, shots=args.shots, render_dashboard=False)
     directory = artifact_dir(args.output_dir)
-    try:
-        shutil.copyfile(result.dashboard_path, directory / "qaoa.png")
-    finally:
-        result.dashboard_path.unlink(missing_ok=True)
     (directory / "optimized.qasm").write_text(result.qasm)
     qiskit_path = save_qiskit_script(directory, result.qasm)
     response = asdict(result)
     response.pop("qasm")
-    response.update(hardware=False, created_at=started_at, dashboard_path=str(directory / "qaoa.png"),
+    response.pop("dashboard_path")
+    response.pop("dashboard_error")
+    response.update(schema_version=SCHEMA_VERSION, receipt_type="qaoa", hardware=False, created_at=started_at,
                     qasm_path=str(directory / "optimized.qasm"), qiskit_path=qiskit_path, artifacts=str(directory))
     circuit = qasm3.loads(result.qasm)
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
@@ -288,7 +324,8 @@ def qaoa(args):
                     comparison_metadata=comparison_metadata(circuit),
                     title="QAOA Max-Cut experiment", backend="local_statevector_simulator", versions=sdk_versions(),
                     run_id=directory.name, completed_at=now(), duration_seconds=round(time.monotonic() - started, 6))
-    return finish_report(response, directory, "experiment.json")
+    return finish_dashboard(response, directory, "experiment.json",
+                            lambda: render_qaoa_dashboard(result), "qaoa.png")
 
 
 def chsh(args):
@@ -324,6 +361,7 @@ def chsh(args):
     for row, histogram, seed in zip(rows, counts, sampling["configuration_seeds"], strict=True):
         row.update(counts=histogram, configuration_seed=seed)
     response = {
+        "schema_version": SCHEMA_VERSION, "receipt_type": "chsh",
         "run_id": directory.name, "title": args.title or "CHSH Bell inequality experiment",
         "created_at": started_at, "completed_at": now(),
         "duration_seconds": round(time.monotonic() - started, 6),
@@ -340,12 +378,12 @@ def chsh(args):
 
 
 def doctor(args):
-    response = {"channel": "ibm_quantum_platform", "python": sys.version.split()[0],
+    response: dict = {"channel": "ibm_quantum_platform", "python": sys.version.split()[0],
                 "versions": {package: importlib.metadata.version(package)
                              for package in ("qiskit", "qiskit-ibm-runtime", "numpy")},
-                "credentials_in_environment": bool(os.environ.get("QISKIT_IBM_TOKEN") or
-                                                   os.environ.get("QISKIT_IBM_RUNTIME_APIKEY")),
-                "saved_account_file_exists": (Path.home() / ".qiskit/qiskit-ibm.json").exists()}
+                "credentials_in_environment": None, "saved_account_file_exists": None,
+                "credential_check": "not_performed",
+                "optional_capabilities": optional_capabilities(args.capability)}
     if args.online:
         response["backends"] = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
         response["queried_at"] = now()
@@ -422,14 +460,11 @@ def render_report(args):
         response = json.loads(args.input.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise UserError("Cannot read the input receipt; provide a valid public JSON result file.") from error
-    if not isinstance(response, dict):
-        raise UserError("The input receipt must be a JSON object.")
     # Validate before creating output files; preserve the original input receipt.
-    if response.get("status") not in {"DONE", "ERROR", "CANCELLED"}:
-        raise UserError("A completion report requires a terminal job state in the input receipt.")
+    validate_receipt(response, for_report=True)
     directory = artifact_dir(args.output_dir)
     response.pop("report_error", None)
-    response["report_source"] = "imported_receipt_not_verified_online"
+    response["report_source"] = IMPORTED
     response["artifacts"] = str(directory)
     try:
         write_report(response, directory)
@@ -461,6 +496,8 @@ def parser():
     commands.add_parser("onboarding", help="Check whether the first chat needs IBM Quantum configuration")
     check = commands.add_parser("doctor", help="Check packages and optionally IBM connectivity")
     check.add_argument("--online", action="store_true")
+    check.add_argument("--capability", choices=list(PROFILES), action="append",
+                       help="Check a documented optional profile; exit 1 unless its pinned metadata is installed")
     commands.add_parser("backends", help="List accessible live IBM hardware")
     detail = commands.add_parser("backend", help="Inspect a live backend")
     detail.add_argument("name")
@@ -483,6 +520,9 @@ def parser():
     status.add_argument("--wait", type=bounded_integer(0, 300), default=0)
     status.add_argument("--output", type=Path)
     status.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
+    recovery = commands.add_parser("recover-submission", help="Find existing jobs by saved run tag; never submit")
+    recovery.add_argument("run_id", help="run_id from the saved submission-intent.json or submission error")
+    recovery.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
     poll = commands.add_parser("poll-jobs", help="Check tracked jobs and generate Carbon HTML on completion")
     poll.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/dam")
     poll.add_argument("--precheck", action="store_true", help="Exit 1 when no report notifications are pending")
@@ -528,6 +568,8 @@ def main(argv=None):
             result = execute(args)
         elif args.command == "job":
             result = inspect_job(args)
+        elif args.command == "recover-submission":
+            result = recover_submission(args)
         elif args.command == "qaoa":
             result = qaoa(args)
         elif args.command == "chsh":
@@ -543,8 +585,12 @@ def main(argv=None):
         else:
             result = compare(args)
         print(json.dumps(result, indent=2, default=str))
+        if args.command == "doctor" and args.capability:
+            return int(any(item["status"] != "installed" for item in result["optional_capabilities"].values()))
         return 0
-    except UserError as error:
+    except SubmissionError as error:
+        print(json.dumps(error.response, indent=2, default=str))
+    except (UserError, RecoveryError, ReceiptValidationError) as error:
         print(json.dumps({"error": str(error)}))
     except Exception as error:  # noqa: BLE001 - CLI boundary redacts SDK request bodies
         # SDK exception messages can contain request bodies or credentials.

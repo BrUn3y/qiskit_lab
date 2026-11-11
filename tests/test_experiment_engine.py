@@ -1,4 +1,5 @@
 """Scientific contracts for sampled QAOA solutions and classical validation."""
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -21,7 +22,9 @@ def test_best_solution_is_sampled_and_ranked_by_cut_then_frequency(observed, exp
     # Force a finite-shot outcome, including one that misses every exact optimum.
     monkeypatch.setattr(engine.np.random, "default_rng",
                         lambda seed: SimpleNamespace(multinomial=lambda shots, probabilities: sampled))
-    dashboard = Mock(return_value=tmp_path / "unused.png")
+    image = tmp_path / "dashboard.png"
+    image.write_bytes(b"dashboard")
+    dashboard = Mock(return_value=image)
     monkeypatch.setattr(engine, "_render_dashboard", dashboard)
     result = engine.run_maxcut_qaoa("5 nodes", shots=sum(observed.values()))
     assert result.counts == observed
@@ -31,6 +34,37 @@ def test_best_solution_is_sampled_and_ranked_by_cut_then_frequency(observed, exp
     assert result.exact_cut == 4
     assert result.approximation_ratio == result.expected_cut / result.exact_cut
     assert dashboard.call_args.kwargs["best_bitstring"] == expected
+    assert result.dashboard_path == image
+    assert result.dashboard_error is None
+
+
+@pytest.mark.parametrize("missing_file", [False, True])
+def test_qaoa_returns_completed_science_when_dashboard_fails(monkeypatch, tmp_path, missing_file):
+    dashboard = Mock(return_value=tmp_path / "missing.png") if missing_file else Mock(
+        side_effect=OSError("private-rendering-detail"))
+    monkeypatch.setattr(engine, "_render_dashboard", dashboard)
+    result = engine.run_maxcut_qaoa("2-node", shots=32)
+    assert sum(result.counts.values()) == 32
+    assert result.best_bitstring in result.counts
+    assert result.exact_cut == 1
+    assert result.qasm.startswith("OPENQASM 3")
+    assert len(result.optimization_trace) == 221
+    assert result.dashboard_path is None
+    assert result.dashboard_error == ("FileNotFoundError" if missing_file else "OSError")
+    assert "private-rendering-detail" not in str(result)
+
+
+def test_qaoa_can_defer_rendering_without_changing_scientific_results(monkeypatch, tmp_path):
+    image = tmp_path / "dashboard.png"
+    image.write_bytes(b"dashboard")
+    dashboard = Mock(return_value=image)
+    monkeypatch.setattr(engine, "_render_dashboard", dashboard)
+    deferred = engine.run_maxcut_qaoa("2-node", shots=32, render_dashboard=False)
+    dashboard.assert_not_called()
+    assert deferred.dashboard_path is None
+    assert deferred.dashboard_error is None
+    rendered = engine.run_maxcut_qaoa("2-node", shots=32)
+    assert deferred == replace(rendered, dashboard_path=None)
 
 
 @pytest.mark.parametrize("shots", [0, -1])

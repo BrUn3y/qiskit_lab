@@ -15,7 +15,12 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    Bind parameters and include measurements; the loader adds them if missing.
    Qiskit Python can be developed as a normal script, then exported with
    `qiskit.qasm3.dumps(qc)` to feed the execution tool.
-2. **Check:** `scripts/dam/quantum doctor`; use `doctor --online` to verify IBM
+2. **Check:** `scripts/dam/quantum doctor` is credential-free and offline.
+   Optional SQD/fermionic profiles use a separate locked project: read
+   `docs/optional-capabilities.md` before installing. The base wrapper does not
+   retain ad hoc optional installs. Run doctor in the chosen optional interpreter
+   with `--capability PROFILE` and then its explicit native smoke check; metadata
+   presence alone does not verify native libraries. Use `doctor --online` to verify IBM
    access. `backends` and `backend ibm_NAME` are live hardware queries.
    `backend ibm_NAME --dashboard` reuses the original topology/health PNG renderer.
 3. **Simulate:** `scripts/dam/quantum execute --example bell --shots 1024`.
@@ -31,6 +36,14 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
    joint bit counts and a named Carbon HTML report. `--title 'Bell circuit'` can
    label an existing job when its circuit description is known. `--wait 60` waits briefly for an existing job, and
    `--output artifacts/dam/job.json` saves it. A timeout is not a new submission.
+   If the submission response was lost, read the public `submission-intent.json`
+   for its `run_id`, then run `scripts/dam/quantum recover-submission RUN_ID`
+   with the original `--output-dir` and IBM instance. Recovery only reads IBM
+   jobs by the saved unique run tag and project tag; it never submits or retries.
+   Zero matches do not prove failure; repeat read-only recovery later. One match
+   durably tracks its ID for `job`/`poll-jobs`. Multiple matches remain ambiguous
+   with candidate IDs and no automatic selection. An already tracked ID needs no
+   IBM query. Never infer acceptance/failure from a missing response alone.
 6. **Experiment:** `scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'`.
    This runs the Qiskit deterministic p=1 engine (2–8 nodes), optimizes locally,
    compares with the exact classical optimum and produces a PNG, JSON and QASM.
@@ -80,6 +93,20 @@ Save a public JSON receipt with terminal `status`, boolean `hardware`, `backend`
 `sign_in_chsh` of +1 or -1; an odd number of signs must be negative. Preserve the
 measurement angles and theoretical values when known. Use `chsh_ideal` for the
 ideal reference; hardware noise is not a calibrated depolarizing prediction.
+Repeated local-setting angles must agree within absolute 1e-9 rad in the
+recorded convention; missing angles remain supported. Do not infer a period
+or silently reconcile contradictory settings.
+
+Reports retain approximate standard errors and add conservative two-sided 95%
+Hoeffding intervals, valid at parity boundaries and for small fixed samples.
+`violated` and `observed_violation` mean observed |S| > 2 only.
+`statistically_supported_violation` requires the entire S interval outside
+[-2, 2], conditional on independent shots, fixed per-configuration distributions,
+and preselected shot counts/settings/signs (no optional stopping/post-selection).
+Correlator intervals are marginal, not simultaneous; the S interval is derived
+directly using all four sample sizes. These quantify shot noise, not systematic
+errors, locality or fair sampling; never describe them as a loophole-free Bell
+test. See README for formulas and additive JSON fields.
 
 Generate the report with `scripts/dam/quantum report --input PUBLIC_RESULT.json`.
 This validates counts and recalculates statistics without contacting IBM or
@@ -168,6 +195,14 @@ avoid a duplicate scheduled notification. Never acknowledge before delivery.
 Surface `report_error` and preserve the scientific result if rendering fails.
 
 ## Reporting
+
+New native receipts use top-level `schema_version: 1` and `receipt_type`.
+Read `docs/receipts.md` before constructing custom receipts. Historical files
+without that envelope remain supported; never remove an unsupported version to
+bypass validation. Use `qiskit_lab.receipts.validate_receipt` before publishing
+custom results. Counts, identity and required metadata must validate before
+reports; failed/cancelled jobs may have no counts. Offline imports retain their
+not-verified-online provenance and are not enrolled for implicit IBM polling.
 
 Respond in English. Cite actual tool output. Include backend, shots,
 job ID (hardware only), observed status, UTC timestamp and artifact paths.

@@ -69,6 +69,7 @@ def test_default_command_samples_once_and_preserves_all_provenance(monkeypatch, 
     assert len(circuits) == 4
     assert [row["label"] for row in result["correlators"]] == LABELS
     assert result["hardware"] is False
+    assert result["schema_version"] == 1 and result["receipt_type"] == "chsh"
     assert "job_id" not in result and "report_source" not in result
     assert result["backend"] == "local_statevector_simulator"
     assert result["status"] == "DONE"
@@ -83,6 +84,9 @@ def test_default_command_samples_once_and_preserves_all_provenance(monkeypatch, 
     assert result["observed_shots_per_configuration"] == [8192] * 4
     assert result["chsh_ideal"] == pytest.approx(2 * math.sqrt(2))
     assert result["chsh_value"] == pytest.approx(result["chsh_ideal"], abs=0.1)
+    assert result["chsh_confidence_method"] == "hoeffding"
+    assert result["chsh_confidence_level"] == 0.95
+    assert result["statistically_supported_violation"] is True
     assert result["versions"].keys() == {"qiskit", "qiskit-ibm-runtime", "numpy"}
     assert datetime.fromisoformat(result["created_at"]) <= datetime.fromisoformat(result["completed_at"])
     assert result["duration_seconds"] >= 0
@@ -108,11 +112,17 @@ def test_default_command_samples_once_and_preserves_all_provenance(monkeypatch, 
     assert f"<title>{result['title']} | Qiskit Lab</title>" in html
     assert result["report_filename"] == f"{result['run_id']}-chsh-bell-inequality-experiment.html"
     assert "CHSH measurement correlators" in html
+    assert "95% confidence interval for S (Hoeffding)" in html
+    assert "under the stated sampling assumptions" in html
     assert html.count("data-publication=") == 4
     assert "Local simulation" in html
     assert "Noise-model prediction S" not in html
     assert "Recorded measurement convention" in html
     assert "cos(2 theta)" in html
+    download = re.search(r'href="data:application/json;base64,([^"]+)"', html)
+    downloaded = json.loads(base64.b64decode(download[1]))
+    assert downloaded == result
+    assert downloaded["schema_version"] == 1 and downloaded["receipt_type"] == "chsh"
     for index, row in enumerate(result["correlators"], start=1):
         match = re.search(
             rf'download="configuration-{index}.qasm"\s+href="data:text/plain;base64,([^"]+)"', html)
@@ -175,10 +185,28 @@ def test_command_dispatch_and_custom_title(tmp_path, capsys):
     assert cli.main(["chsh", "--shots", "1", "--title", "Local CHSH test",
                      "--output-dir", str(tmp_path)]) == 0
     result = json.loads(capsys.readouterr().out)
+    assert result["schema_version"] == 1 and result["receipt_type"] == "chsh"
     assert result["observed_shots"] == 4
     assert result["title"] == result["report_title"] == "Local CHSH test"
     assert result["report_filename"].endswith("-local-chsh-test.html")
     assert "<h1>Local CHSH test</h1>" in Path(result["report_path"]).read_text()
+
+
+def test_native_small_sample_retains_observed_vs_supported_violation(monkeypatch, tmp_path):
+    monkeypatch.setattr(sampling, "sample_configurations", lambda circuits, **kwargs: (
+        [{"00": 1}, {"01": 1}, {"00": 1}, {"00": 1}],
+        {"method": "synthetic_fixture", "root_seed": kwargs["seed"], "configuration_seeds": [1, 2, 3, 4]},
+    ))
+    result = run_chsh(tmp_path, "--shots", "1")
+    assert result["chsh_value"] == 4
+    assert result["observed_violation"] is True
+    assert result["statistically_supported_violation"] is False
+    assert result["chsh_confidence_interval"][0] < 2
+    html = Path(result["report_path"]).read_text()
+    assert "Observed |S| exceeds 2." in html
+    assert "A violation is not statistically supported at this confidence level." in html
+    assert "95% confidence interval for S (Hoeffding)" in html
+    assert "Recorded measurement convention" in html
 
 
 def test_science_is_saved_before_native_report_failure(monkeypatch, tmp_path):

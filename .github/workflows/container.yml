@@ -20,6 +20,36 @@ jobs:
           node --version
           npm ci --ignore-scripts --no-audit --no-fund
           npm run build
+  report-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - name: Generate synthetic reports without IBM services
+        run: uv run --locked python tools/report-assets/create-fixtures.py
+      - name: Install locked browser tooling
+        timeout-minutes: 2
+        working-directory: tools/report-assets
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Smoke report interactions with external requests blocked
+        working-directory: tools/report-assets
+        run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: report-browser-failure
+          path: artifacts/report-smoke/results
   container:
     runs-on: ubuntu-latest
     timeout-minutes: 15

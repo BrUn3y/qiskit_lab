@@ -2,10 +2,12 @@
   "name": "qiskit-lab-report-assets",
   "private": true,
   "scripts": {
-    "build": "sass --load-path=node_modules --style=compressed --no-source-map --silence-deprecation=global-builtin,color-functions,import report.scss ../../src/qiskit_lab/assets/carbon.css && node embed-fonts.mjs"
+    "build": "sass --load-path=node_modules --style=compressed --no-source-map --silence-deprecation=global-builtin,color-functions,import report.scss ../../src/qiskit_lab/assets/carbon.css && node embed-fonts.mjs",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
     "@carbon/styles": "1.119.0",
+    "@playwright/test": "1.64.0",
     "sass": "1.108.0"
   }
 }
