@@ -68,6 +68,35 @@ comparison are covered by `tests/test_documentation.py`. Generated artifacts
 belong under ignored `artifacts/`, not in commits. The terminal CLI prints JSON;
 an agent publishes HTML artifacts separately through DAM tools.
 
+## Local report browser smoke
+
+The separate `report-browser` CI job runs one Chromium worker at desktop and
+mobile sizes, with no retries. It uses synthetic local HTML fixtures, blocks
+external requests, and fails on page errors. It checks charts, independent
+filters and modes, pagination, exact downloaded JSON/source bytes, embedded
+images, terminal failures, and the JavaScript-disabled fallback. It does not
+contact IBM, run QPU work, or verify agent behavior.
+
+To reproduce with Node.js 20+ and the locked Python environment:
+
+```sh
+uv sync --locked
+uv run --locked python tools/report-assets/create-fixtures.py
+cd tools/report-assets
+npm ci --ignore-scripts --no-audit --no-fund
+npx --no-install playwright install --with-deps chromium
+npm run test:browser
+```
+
+Installation needs network access; fixture generation and browser tests do not.
+Reports open directly from disk; no server or external assets are needed.
+Generated fixtures, screenshots and failure traces stay under ignored
+`artifacts/report-smoke/`. The browser dependency is development-only, pinned
+in the existing asset-tool lockfile, and absent from the Python runtime image.
+The browser job is separate from the Python 3.11-3.13 matrix and does not replace
+its full job-tracking line/branch coverage gate. This is a targeted Chromium
+smoke, not cross-browser coverage, visual snapshot approval or proof of IBM access.
+
 ## Safety and review
 
 - Keep code, comments, and documentation in English. Add focused tests for
