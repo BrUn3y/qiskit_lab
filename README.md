@@ -351,6 +351,29 @@ scripts/dam/quantum qaoa --request 'QAOA Max-Cut on a 5-node graph'
 
 Grover uses two qubits and marked state `11`; Deutsch–Jozsa uses a balanced oracle. The model can develop other circuits and export them to QASM. The local simulator supports up to 20 qubits; memory grows exponentially, so this limit is not a resource guarantee. Joint counts preserve correlations between registers. Compare distributions for the same circuit and register order. Artifacts are saved in `artifacts/dam/<run>/`.
 
+### Recovering presentation failures
+
+Local `execute` and `qaoa` persist completed counts, scientific metadata, seed,
+and timing in `receipt.json` or `experiment.json` before PNG rendering or copying.
+`completed_at` and `duration_seconds` describe scientific execution, excluding
+presentation time. Successful commands retain their existing PNG and HTML fields.
+
+A PNG rendering, copy, or temporary-file cleanup failure returns a safe exception
+class in `dashboard_error`, without exposing the exception message. A failed PNG
+is not advertised through `dashboard_path`; a successfully copied PNG remains
+available even if temporary-file cleanup fails. HTML generation is still attempted
+independently. Its existing `report_error` protection remains in place.
+Do not rerun an experiment merely to recover its scientific results: use the saved
+JSON. To regenerate an HTML report offline, run
+`scripts/dam/quantum report --input PATH_TO_SAVED_JSON`.
+This regenerates HTML, not a missing PNG.
+
+Python callers of `run_maxcut_qaoa()` retain automatic dashboard rendering by
+default. On presentation failure the returned result has `dashboard_path=None`
+and a safe `dashboard_error`. Pass `render_dashboard=False` to obtain the same
+scientific result without rendering, persist it, and then call
+`render_qaoa_dashboard(result)` separately.
+
 ### OpenQASM and receipt comparison
 
 The checked-in [Bell circuit](docs/examples/bell.qasm) can be used directly.

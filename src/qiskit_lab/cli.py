@@ -106,8 +106,34 @@ def finish_report(response, directory, filename):
         write_report(response, directory)
     except Exception as error:  # noqa: BLE001 - Report failures must never lose accepted job/results
         response["report_error"] = type(error).__name__
+        for field in ("report_path", "report_filename", "report_title"):
+            response.pop(field, None)
     save_json(directory / filename, response)
     return response
+
+
+def finish_dashboard(response, directory, filename, render, image_name):
+    # The completed receipt must exist before importing/rendering/copying a PNG.
+    save_json(directory / filename, response)
+    image = None
+    destination = directory / image_name
+    temporary = directory / f".{image_name}.{uuid.uuid4().hex}.tmp"
+    try:
+        image = Path(render())
+        shutil.copyfile(image, temporary)
+        temporary.replace(destination)
+        response["dashboard_path"] = str(destination)
+    except Exception as error:  # noqa: BLE001 - Presentation must not discard scientific results
+        response["dashboard_error"] = type(error).__name__
+    finally:
+        for path in (image, temporary):
+            if path is None:
+                continue
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as error:
+                response.setdefault("dashboard_error", type(error).__name__)
+    return finish_report(response, directory, filename)
 
 
 def example_circuit(name, qubits=3):
@@ -214,17 +240,15 @@ def execute(args):
         return receipt
     result = StatevectorSampler(seed=42).run([circuit], shots=args.shots).result()
     receipt.update(backend="local_statevector_simulator", status="DONE", counts=counts_from_result(result)[0])
-    from qiskit_lab.execution_visualization import render_execution_dashboard
-
-    image = render_execution_dashboard(circuit, receipt["counts"], backend_name=receipt["backend"],
-                                       job_id=receipt["run_id"], shots=args.shots)
-    try:
-        shutil.copyfile(image, directory / "results.png")
-    finally:
-        image.unlink(missing_ok=True)
-    receipt["dashboard_path"] = str(directory / "results.png")
     receipt.update(completed_at=now(), duration_seconds=round(time.monotonic() - started, 6), seed=42)
-    return finish_report(receipt, directory, "receipt.json")
+
+    def render():
+        from qiskit_lab.execution_visualization import render_execution_dashboard
+
+        return render_execution_dashboard(circuit, receipt["counts"], backend_name=receipt["backend"],
+                                          job_id=receipt["run_id"], shots=args.shots)
+
+    return finish_dashboard(receipt, directory, "receipt.json", render, "results.png")
 
 
 def inspect_job(args):
@@ -268,19 +292,17 @@ def inspect_job(args):
 def qaoa(args):
     started = time.monotonic()
     started_at = now()
-    from qiskit_lab.experiment_engine import run_maxcut_qaoa
+    from qiskit_lab.experiment_engine import render_qaoa_dashboard, run_maxcut_qaoa
 
-    result = run_maxcut_qaoa(args.request, shots=args.shots)
+    result = run_maxcut_qaoa(args.request, shots=args.shots, render_dashboard=False)
     directory = artifact_dir(args.output_dir)
-    try:
-        shutil.copyfile(result.dashboard_path, directory / "qaoa.png")
-    finally:
-        result.dashboard_path.unlink(missing_ok=True)
     (directory / "optimized.qasm").write_text(result.qasm)
     qiskit_path = save_qiskit_script(directory, result.qasm)
     response = asdict(result)
     response.pop("qasm")
-    response.update(hardware=False, created_at=started_at, dashboard_path=str(directory / "qaoa.png"),
+    response.pop("dashboard_path")
+    response.pop("dashboard_error")
+    response.update(hardware=False, created_at=started_at,
                     qasm_path=str(directory / "optimized.qasm"), qiskit_path=qiskit_path, artifacts=str(directory))
     circuit = qasm3.loads(result.qasm)
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
@@ -288,7 +310,8 @@ def qaoa(args):
                     comparison_metadata=comparison_metadata(circuit),
                     title="QAOA Max-Cut experiment", backend="local_statevector_simulator", versions=sdk_versions(),
                     run_id=directory.name, completed_at=now(), duration_seconds=round(time.monotonic() - started, 6))
-    return finish_report(response, directory, "experiment.json")
+    return finish_dashboard(response, directory, "experiment.json",
+                            lambda: render_qaoa_dashboard(result), "qaoa.png")
 
 
 def doctor(args):
