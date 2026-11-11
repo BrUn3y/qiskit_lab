@@ -29,6 +29,11 @@ Both **`qiskit` and `qiskit-ibm-runtime` are required dependencies** and must be
 
 ## Quick start: local simulation
 
+New scientific receipts use an explicit schema version and shared runtime
+validation. Historical saved results remain supported without bulk migration.
+See [the receipt contract](docs/receipts.md) for variants, missing-result handling,
+validation errors, and the distinction between imported and online-observed data.
+
 Requirements: Git, Python **3.11-3.13**, and [uv](https://docs.astral.sh/uv/).
 Run these commands in a terminal. No DAM account, IBM credentials, Node.js, or
 QPU access is needed for local simulation. The first sync needs network access

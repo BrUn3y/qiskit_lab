@@ -18,7 +18,7 @@ from importlib.resources import files
 from pathlib import Path
 from urllib.parse import quote
 
-from qiskit_lab.chsh_reporting import prepare_chsh_report
+from qiskit_lab.receipts import validate_receipt
 
 CARBON_VERSION = "1.119.0"
 
@@ -207,11 +207,7 @@ def report_filename(data, directory):
 
 def write_report(data, directory):
     """Write a standalone report atomically; only terminal runs receive reports."""
-    if data.get("status") not in {"DONE", "ERROR", "CANCELLED"}:
-        raise ValueError("A completion report requires a terminal job state.")
-    if "hardware" in data and type(data["hardware"]) is not bool:
-        raise ValueError("The hardware field must be a boolean when provided.")
-    prepare_chsh_report(data)
+    validate_receipt(data, for_report=True)
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / report_filename(data, directory)

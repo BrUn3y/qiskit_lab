@@ -28,6 +28,7 @@ from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
 
 from qiskit_lab.capabilities import PROFILES, optional_capabilities
 from qiskit_lab.comparison import ComparisonError, compare_receipts, comparison_metadata
+from qiskit_lab.receipts import IMPORTED, SCHEMA_VERSION, ReceiptValidationError, validate_receipt
 from qiskit_lab.reports import write_report
 from qiskit_lab.submission import RecoveryError, SubmissionError, prepare_intent, recover_submission, submit_once
 
@@ -101,6 +102,7 @@ def sdk_versions():
 
 def finish_report(response, directory, filename):
     # Persist scientific results even if presentation generation fails.
+    validate_receipt(response, for_report=True)
     response.pop("report_error", None)
     save_json(directory / filename, response)
     try:
@@ -115,6 +117,7 @@ def finish_report(response, directory, filename):
 
 def finish_dashboard(response, directory, filename, render, image_name):
     # The completed receipt must exist before importing/rendering/copying a PNG.
+    validate_receipt(response, for_report=True)
     save_json(directory / filename, response)
     image = None
     destination = directory / image_name
@@ -211,7 +214,8 @@ def execute(args):
     (directory / "circuit.qasm").write_text(source, encoding="utf-8")
     qiskit_path = save_qiskit_script(directory, source)
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
-    receipt = {"run_id": directory.name, "created_at": now(), "shots": args.shots,
+    receipt = {"schema_version": SCHEMA_VERSION, "receipt_type": "job" if args.hardware else "execution",
+               "run_id": directory.name, "created_at": now(), "shots": args.shots,
                "qubits": circuit.num_qubits, "hardware": args.hardware, "artifacts": str(directory),
                "qiskit_path": qiskit_path}
     title = getattr(args, "title", None) or (
@@ -232,11 +236,19 @@ def execute(args):
         receipt.update(isa_qubits=isa_circuit.num_qubits, isa_depth=isa_circuit.depth(),
                        isa_gate_counts=dict(isa_circuit.count_ops()), max_execution_time=args.max_execution_time,
                        backend=backend.name)
+        validate_receipt({**receipt, "status": "NOT_SUBMITTED"})
         prepare_intent(receipt)
         sampler = SamplerV2(mode=backend, options={"max_execution_time": args.max_execution_time,
                                                   "environment": {"job_tags": receipt["submission"]["job_tags"]}})
         # Never retry run(): a network error may occur after IBM accepted a job.
-        return submit_once(sampler, isa_circuit, receipt, directory)
+        response = submit_once(sampler, isa_circuit, receipt, directory)
+        try:
+            validate_receipt(response)
+        except ReceiptValidationError as error:
+            raise SubmissionError({**response, "error": type(error).__name__,
+                                   "next_step": "IBM returned this accepted job ID. Preserve it and query "
+                                                "the same ID; do not resubmit."}) from error
+        return response
     result = StatevectorSampler(seed=42).run([circuit], shots=args.shots).result()
     receipt.update(backend="local_statevector_simulator", status="DONE", counts=counts_from_result(result)[0])
     receipt.update(completed_at=now(), duration_seconds=round(time.monotonic() - started, 6), seed=42)
@@ -262,7 +274,8 @@ def inspect_job(args):
     job = runtime_service().job(args.job_id)
     backend = job.backend()
     response.update(job_id=job.job_id(), backend=backend.name, status=str(job.status()), queried_at=now(),
-                    hardware=True, artifacts=str(directory))
+                    hardware=True, artifacts=str(directory), schema_version=SCHEMA_VERSION, receipt_type="job")
+    response.pop("report_source", None)
     response.pop("poll_error", None)
     if response["status"] == "DONE" or (args.wait and response["status"] not in {"ERROR", "CANCELLED"}):
         try:
@@ -274,6 +287,7 @@ def inspect_job(args):
             # The accepted job is still identified even after a timeout/failure.
             response["result_error"] = type(error).__name__
             response["next_step"] = "Query this same job ID again; do not resubmit the circuit."
+    validate_receipt(response)
     if response["status"] in {"DONE", "ERROR", "CANCELLED"}:
         response.update(job_metadata(job))
         # A failed result download is retryable; do not publish an empty success report.
@@ -301,7 +315,7 @@ def qaoa(args):
     response.pop("qasm")
     response.pop("dashboard_path")
     response.pop("dashboard_error")
-    response.update(hardware=False, created_at=started_at,
+    response.update(schema_version=SCHEMA_VERSION, receipt_type="qaoa", hardware=False, created_at=started_at,
                     qasm_path=str(directory / "optimized.qasm"), qiskit_path=qiskit_path, artifacts=str(directory))
     circuit = qasm3.loads(result.qasm)
     (directory / "circuit.txt").write_text(str(circuit.draw(output="text")) + "\n")
@@ -396,14 +410,11 @@ def render_report(args):
         response = json.loads(args.input.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise UserError("Cannot read the input receipt; provide a valid public JSON result file.") from error
-    if not isinstance(response, dict):
-        raise UserError("The input receipt must be a JSON object.")
     # Validate before creating output files; preserve the original input receipt.
-    if response.get("status") not in {"DONE", "ERROR", "CANCELLED"}:
-        raise UserError("A completion report requires a terminal job state in the input receipt.")
+    validate_receipt(response, for_report=True)
     directory = artifact_dir(args.output_dir)
     response.pop("report_error", None)
-    response["report_source"] = "imported_receipt_not_verified_online"
+    response["report_source"] = IMPORTED
     response["artifacts"] = str(directory)
     try:
         write_report(response, directory)
@@ -510,7 +521,7 @@ def main(argv=None):
         return 0
     except SubmissionError as error:
         print(json.dumps(error.response, indent=2, default=str))
-    except (UserError, RecoveryError) as error:
+    except (UserError, RecoveryError, ReceiptValidationError) as error:
         print(json.dumps({"error": str(error)}))
     except Exception as error:  # noqa: BLE001 - CLI boundary redacts SDK request bodies
         # SDK exception messages can contain request bodies or credentials.
