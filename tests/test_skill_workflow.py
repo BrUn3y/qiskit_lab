@@ -299,6 +299,19 @@ def test_additional_nested_license_is_preserved_and_flagged(tools, bundle, upstr
     assert (output / ".agents/skills/select-sqd-eigensolver/LICENSE-extra").read_text() == "Synthetic extra terms\n"
 
 
+def test_root_license_directories_are_copied_completely_not_silently_omitted(tools, bundle, upstream, tmp_path):
+    maintenance, _ = tools
+    legal = upstream / "LICENSES/third-party/terms.txt"
+    legal.parent.mkdir(parents=True)
+    legal.write_bytes(b"Complete synthetic third-party licensing terms\n")
+    output = tmp_path / "root-licenses"
+    report = maintenance.propose(bundle, upstream, commit(upstream), output)
+    local = ".agents/skills/QISKIT-SKILLS-UPSTREAM-LICENSES/third-party/terms.txt"
+    assert (output / local).read_bytes() == legal.read_bytes()
+    assert report["license_review_required"] is True
+    assert maintenance.read_bundle(output)["files"][local]["upstream_path"] == "LICENSES/third-party/terms.txt"
+
+
 def test_maintenance_cli_emits_verified_review_only_proposal(tools, bundle, upstream, tmp_path, capsys):
     maintenance, _ = tools
     output = tmp_path / "cli"

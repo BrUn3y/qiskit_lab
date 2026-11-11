@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ".agents/qiskit-skills.json"
 NOTICE = ".agents/skills/QISKIT-SKILLS-NOTICE.md"
 REPOSITORY = "https://github.com/Qiskit/skills"
+ATTRIBUTION_NAMES = ("LICENSE", "NOTICE", "COPYING", "COPYRIGHT")
 
 
 def relative_path(value):
@@ -78,8 +79,12 @@ def read_bundle(root):
             expected_source = owner["upstream_path"] + local.removeprefix(owner["path"])
             if upstream.as_posix() != expected_source:
                 raise ValueError("Resource source mapping mismatch")
-        elif not (path.parent == root / ".agents/skills"
-                  and path.name.startswith("QISKIT-SKILLS-") and len(upstream.parts) == 1):
+        elif not (
+            (path.parent == root / ".agents/skills"
+             and path.name.startswith("QISKIT-SKILLS-") and len(upstream.parts) == 1)
+            or (upstream.parts[0].upper().startswith(ATTRIBUTION_NAMES)
+                and local == ".agents/skills/QISKIT-SKILLS-UPSTREAM-" + upstream.as_posix())
+        ):
             raise ValueError("Unexpected root attribution resource")
         content = path.read_bytes()
         if blob_hash(content) != metadata["git_blob_sha1"]:
@@ -133,13 +138,12 @@ def propose(root, source, revision, output):
     license_source = current["files"][current["license_path"]]["upstream_path"]
     if license_source not in tree:
         raise ValueError("Upstream license missing; explicit licensing review required")
-    # Include new root licenses/notices as well as every previously recorded one.
+    # Preserve root legal files/directories as well as every recorded attribution.
     for local, metadata in current["files"].items():
         if not local.startswith(tuple(skill["path"] + "/" for skill in current["skills"])):
             mappings[local] = metadata["upstream_path"]
     for name in tree:
-        if ("/" not in name and name.upper().startswith(("LICENSE", "NOTICE", "COPYING", "COPYRIGHT"))
-                and name not in mappings.values()):
+        if PurePosixPath(name).parts[0].upper().startswith(ATTRIBUTION_NAMES) and name not in mappings.values():
             mappings[f".agents/skills/QISKIT-SKILLS-UPSTREAM-{name}"] = name
     contents = {}
     candidate = copy.deepcopy(current)
@@ -170,10 +174,12 @@ def propose(root, source, revision, output):
                      if old[name]["git_blob_sha1"] != new[name]["git_blob_sha1"] or old_mode(name) != new[name]["git_mode"])
     changed_sources = [new[name]["upstream_path"] if name in new else old[name]["upstream_path"]
                        for name in added + removed + changed]
-    license_changed = any(PurePosixPath(name).name.upper().startswith(("LICENSE", "COPYING", "COPYRIGHT"))
+    license_changed = any(any(part.upper().startswith(("LICENSE", "COPYING", "COPYRIGHT"))
+                              for part in PurePosixPath(name).parts)
                           for name in changed_sources)
-    attribution_changed = license_changed or any(PurePosixPath(name).name.upper().startswith("NOTICE")
-                                                for name in changed_sources)
+    attribution_changed = license_changed or any(
+        any(part.upper().startswith("NOTICE") for part in PurePosixPath(name).parts) for name in changed_sources
+    )
     if license_changed:
         candidate["license"] = "REVIEW-REQUIRED"
     report = {

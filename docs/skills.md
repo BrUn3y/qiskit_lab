@@ -148,8 +148,9 @@ The output must not already exist or overlap either input checkout. It contains:
 - Complete selected skill directories, including nested data, guides, helper
   scripts and per-skill attribution, taken from committed objects rather than
   potentially dirty working files. Unsupported symlinks/submodules fail closed.
-- The recorded root license and attribution files, plus new root files named
-  `LICENSE*`, `NOTICE*`, `COPYING*` or `COPYRIGHT*`. Removal of a recorded root
+- The recorded root license and attribution files, plus new root files or
+  complete directories named `LICENSE*`, `NOTICE*`, `COPYING*` or `COPYRIGHT*`.
+  Removal of a recorded root
   attribution file stops the proposal for explicit review rather than dropping it.
 - Updated revision/source metadata, Git blob SHA-1, SHA-256 and executable mode
   for every copied file. The old manifest schema remains readable. Added,
