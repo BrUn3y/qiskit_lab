@@ -146,11 +146,12 @@ def render_backend_dashboard(backend) -> str:
     queried_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     figure.text(0.985, 0.018, f"Queried locally • {queried_at}", color="#6f6f6f", fontsize=8, ha="right")
 
-    output_directory = Path(tempfile.gettempdir()) / "quantum_lab_pngs"
-    output_directory.mkdir(parents=True, exist_ok=True)
-    safe_name = re.sub(r"[^a-zA-Z0-9_-]", "_", backend.name)
-    output_path = output_directory / f"{safe_name}_backend_{uuid.uuid4().hex[:8]}.png"
-    figure.savefig(output_path, dpi=135, bbox_inches="tight", facecolor=figure.get_facecolor())
-    plt.close(figure)
-    return os.fspath(output_path)
-
+    try:
+        output_directory = Path(tempfile.gettempdir()) / "quantum_lab_pngs"
+        output_directory.mkdir(parents=True, exist_ok=True)
+        safe_name = re.sub(r"[^a-zA-Z0-9_-]", "_", backend.name)
+        output_path = output_directory / f"{safe_name}_backend_{uuid.uuid4().hex[:8]}.png"
+        figure.savefig(output_path, dpi=135, bbox_inches="tight", facecolor=figure.get_facecolor())
+        return os.fspath(output_path)
+    finally:
+        plt.close(figure)

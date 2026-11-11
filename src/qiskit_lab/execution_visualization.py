@@ -110,10 +110,12 @@ def render_execution_dashboard(
     queried_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     figure.text(0.975, 0.025, f"Queried locally • {queried_at}", color="#6f6f6f", fontsize=8, ha="right")
 
-    output_directory = Path(tempfile.gettempdir()) / "quantum_lab_pngs"
-    output_directory.mkdir(parents=True, exist_ok=True)
-    safe_job_id = re.sub(r"[^a-zA-Z0-9_-]", "-", job_id)[:48] or "local-job"
-    output_path = output_directory / f"{safe_job_id}_results_{uuid.uuid4().hex[:8]}.png"
-    figure.savefig(output_path, dpi=150, facecolor=figure.get_facecolor())
-    plt.close(figure)
-    return output_path
+    try:
+        output_directory = Path(tempfile.gettempdir()) / "quantum_lab_pngs"
+        output_directory.mkdir(parents=True, exist_ok=True)
+        safe_job_id = re.sub(r"[^a-zA-Z0-9_-]", "-", job_id)[:48] or "local-job"
+        output_path = output_directory / f"{safe_job_id}_results_{uuid.uuid4().hex[:8]}.png"
+        figure.savefig(output_path, dpi=150, facecolor=figure.get_facecolor())
+        return output_path
+    finally:
+        plt.close(figure)
