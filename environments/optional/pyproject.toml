@@ -1,0 +1,28 @@
+[project]
+name = "qiskit-lab-optional"
+version = "0.0.0"
+requires-python = ">=3.11,<3.14"
+dependencies = ["qiskit-lab"]
+
+[project.optional-dependencies]
+sqd = ["qiskit-addon-sqd==0.14.1", "pyscf==2.15.0"]
+fermionic = ["qiskit-fermions==0.4.1"]
+fermionic-sim = ["qiskit-fermions[ffsim]==0.4.1", "ffsim==0.0.86", "pyscf==2.15.0"]
+
+[tool.uv]
+package = false
+# Keep the SDK ABI identical to the base lock; this is not a base SDK upgrade.
+constraint-dependencies = [
+    "qiskit==2.6.2",
+    "qiskit-ibm-runtime==0.51.0",
+    "qiskit-qasm3-import==0.6.0",
+    "numpy==2.4.6",
+    "scipy==1.17.0",
+    "matplotlib==3.11.2",
+    "rustworkx==0.18.1",
+]
+# Missing native wheels must fail explicitly, never start a Rust/C/Fortran build.
+no-build-package = ["qiskit-fermions", "ffsim", "pyscf", "jaxlib"]
+
+[tool.uv.sources]
+qiskit-lab = { path = "../..", editable = true }

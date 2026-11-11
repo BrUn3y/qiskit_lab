@@ -26,6 +26,7 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
 
+from qiskit_lab.capabilities import PROFILES, optional_capabilities
 from qiskit_lab.comparison import ComparisonError, compare_receipts, comparison_metadata
 from qiskit_lab.reports import write_report
 
@@ -314,12 +315,12 @@ def qaoa(args):
 
 
 def doctor(args):
-    response = {"channel": "ibm_quantum_platform", "python": sys.version.split()[0],
+    response: dict = {"channel": "ibm_quantum_platform", "python": sys.version.split()[0],
                 "versions": {package: importlib.metadata.version(package)
                              for package in ("qiskit", "qiskit-ibm-runtime", "numpy")},
-                "credentials_in_environment": bool(os.environ.get("QISKIT_IBM_TOKEN") or
-                                                   os.environ.get("QISKIT_IBM_RUNTIME_APIKEY")),
-                "saved_account_file_exists": (Path.home() / ".qiskit/qiskit-ibm.json").exists()}
+                "credentials_in_environment": None, "saved_account_file_exists": None,
+                "credential_check": "not_performed",
+                "optional_capabilities": optional_capabilities(args.capability)}
     if args.online:
         response["backends"] = [backend_summary(backend) for backend in runtime_service().backends(simulator=False)]
         response["queried_at"] = now()
@@ -428,6 +429,8 @@ def parser():
     commands.add_parser("onboarding", help="Check whether the first chat needs IBM Quantum configuration")
     check = commands.add_parser("doctor", help="Check packages and optionally IBM connectivity")
     check.add_argument("--online", action="store_true")
+    check.add_argument("--capability", choices=list(PROFILES), action="append",
+                       help="Check a documented optional profile; exit 1 unless its pinned metadata is installed")
     commands.add_parser("backends", help="List accessible live IBM hardware")
     detail = commands.add_parser("backend", help="Inspect a live backend")
     detail.add_argument("name")
@@ -498,6 +501,8 @@ def main(argv=None):
         else:
             result = compare(args)
         print(json.dumps(result, indent=2, default=str))
+        if args.command == "doctor" and args.capability:
+            return int(any(item["status"] != "installed" for item in result["optional_capabilities"].values()))
         return 0
     except UserError as error:
         print(json.dumps({"error": str(error)}))
