@@ -161,6 +161,7 @@ def _chsh(data):
     model = data.get("noise_model") or {}
     if model.get("type") == "single_qubit_depolarizing" and data.get("hardware") is False:
         labels.append(("chsh_theory", "Noise-model prediction S"))
+    labels.append(("measurement_convention", "Recorded measurement convention"))
     comparison = "Observed |S| exceeds 2." if data["observed_violation"] else "Observed |S| does not exceed 2."
     support = ("Statistically supported |S| > 2 under the stated sampling assumptions (shot noise only)."
                if data["statistically_supported_violation"] else
@@ -253,6 +254,19 @@ def write_report(data, directory):
             downloads += _download("Download " + filename, filename, content, "text/plain")
             source_sections.append(_code_source(label, content, filename.replace('.', '-'), description))
             recorded_sources.add(filename)
+    for index, row in enumerate(data.get("correlators", []), start=1):
+        for key, extension, source_title, description in (
+            ("qasm", "qasm", "OpenQASM", "Recorded measurement circuit for this CHSH configuration."),
+            ("qiskit_source", "py", "Qiskit Python script",
+             "Recorded reconstruction for this configuration; not the original author's Python source."),
+        ):
+            source = row.get(key)
+            if isinstance(source, str) and source:
+                filename = f"configuration-{index}.{extension}"
+                label = f"{source_title} - configuration {row['label']}"
+                downloads += _download("Download " + filename, filename, source, "text/plain")
+                source_sections.append(_code_source(label, source, f"configuration-{index}-{extension}", description))
+                recorded_sources.add(f"circuit.{extension}")
     circuit_text_path = directory / "circuit.txt"
     circuit_text = (circuit_text_path.read_text(encoding="utf-8")
                     if circuit_text_path.is_file() and not circuit_text_path.is_symlink() else "")

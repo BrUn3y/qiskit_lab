@@ -1,6 +1,6 @@
 # Public Receipt Contract
 
-New `execute`, `qaoa` and `job` results use a top-level `schema_version: 1`.
+New `execute`, `qaoa`, `chsh` and `job` results use a top-level `schema_version: 1`.
 This version is independent of the package version and of the existing nested
 `comparison_metadata.schema_version: 1`. The shared runtime implementation is
 `qiskit_lab.receipts.validate_receipt`; it uses only the standard library and

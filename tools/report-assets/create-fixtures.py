@@ -6,6 +6,7 @@ from pathlib import Path
 
 from qiskit import QuantumCircuit
 
+from qiskit_lab import cli
 from qiskit_lab.execution_visualization import render_execution_dashboard
 from qiskit_lab.reports import write_report
 
@@ -37,6 +38,11 @@ def main(output=OUTPUT):
     }
     report = write_report(data, directory)
     manifest = {"interactive": str(report), "data": data, "source": source, "qasm": qasm}
+    chsh = cli.chsh(cli.parser().parse_args([
+        "chsh", "--shots", "64", "--title", "Synthetic CHSH regression fixture",
+        "--output-dir", str(output / "chsh"),
+    ]))
+    manifest.update(chsh=chsh["report_path"], chsh_data=chsh)
     for status in ("ERROR", "CANCELLED"):
         manifest[status] = str(write_report(
             {"status": status, "hardware": True, "backend": "synthetic_fixture", "job_id": "synthetic-" + status},

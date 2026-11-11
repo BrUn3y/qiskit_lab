@@ -32,6 +32,15 @@ runpy.run_path(sys.argv[0], run_name="__main__")
     assert html.count("data-publication=") == 2
     assert "data:image/png;base64," in html
     assert "Synthetic report regression fixture" in html
+    chsh = manifest["chsh_data"]
+    assert chsh["schema_version"] == 1 and chsh["receipt_type"] == "chsh"
+    assert chsh["hardware"] is False
+    assert len(set(chsh["sampling"]["configuration_seeds"])) == 4
+    assert len(chsh["correlators"]) == 4
+    html = Path(manifest["chsh"]).read_text()
+    assert html.count("data-publication=") == 4
+    assert "95% confidence interval for S (Hoeffding)" in html
+    assert "Download configuration-4.py" in html
     for status in ("ERROR", "CANCELLED"):
         html = Path(manifest[status]).read_text()
         assert "No measurement results" in html

@@ -61,6 +61,18 @@ Use `scripts/dam/quantum --help` for available commands; stdout is JSON.
 
 ## Custom CHSH experiments
 
+For an end-to-end local Bell-state CHSH experiment, use
+`scripts/dam/quantum chsh --shots 8192 --seed 42`. It makes one complete
+`sample_configurations()` call, saves four labelled measured circuits with
+independent configuration seeds, and generates the existing native HTML report.
+Settings are `--alice-a`, `--alice-a-prime`, `--bob-b`, `--bob-b-prime`, in
+radians. They are basis angles: measure `RY(-2 theta)` then Z, corresponding to
+`cos(2 theta) Z + sin(2 theta) X`. Defaults are 0, pi/4, pi/8, 3pi/8 on Phi+,
+with S = E(ab) - E(ab') + E(a'b) + E(a'b'). Alice is qubit 0; count strings
+are Bob-Alice. This command is ideal/local only, with no noise or hardware flag.
+Same inputs reproduce scientific results in the same locked environment, not
+timestamps/IDs. Publish its returned native HTML through the completion workflow.
+
 For local measurement configurations, use the bundled independent sampling helper:
 
 ```python

@@ -127,3 +127,27 @@ test("failed and cancelled jobs never display invented charts or counts", async 
   }
   await check();
 });
+
+test("native CHSH keeps its receipt schema, confidence bounds and source downloads", async ({ context, page }, info) => {
+  const check = await guard(context, page);
+  await page.goto(pathToFileURL(manifest.chsh).href);
+  const data = manifest.chsh_data;
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(data.title);
+  await expect(page.locator(".publication")).toHaveCount(4);
+  await expect(page.getByText(/95% confidence interval for S \(Hoeffding\)/)).toBeVisible();
+  await expect(page.getByText("Recorded measurement convention", { exact: true })).toBeVisible();
+  const result = JSON.parse((await download(page, "Download result JSON")).bytes);
+  expect(result).toEqual(data);
+  expect(result.schema_version).toBe(1);
+  expect(result.receipt_type).toBe("chsh");
+  expect(result.hardware).toBe(false);
+  expect(result.chsh_confidence_level).toBe(0.95);
+  expect(new Set(result.sampling.configuration_seeds).size).toBe(4);
+  expect((await download(page, "Download configuration-1.qasm")).bytes).toBe(data.correlators[0].qasm);
+  expect((await download(page, "Download configuration-4.py")).bytes).toBe(data.correlators[3].qiskit_source);
+  await page.locator("#configuration-1-py summary").click();
+  await expect(page.locator("#configuration-1-py .source-code")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.screenshot({ path: info.outputPath("chsh.png"), fullPage: true });
+  await check();
+});

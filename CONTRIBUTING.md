@@ -80,6 +80,8 @@ images, terminal failures, and the JavaScript-disabled fallback. It does not
 contact IBM, run QPU work, or verify agent behavior.
 Controls and downloads use independent browser contexts and separate scenarios,
 each retaining the same 30-second limit.
+The native CHSH fixture also checks the versioned JSON download, confidence
+bounds, independent seed metadata and per-configuration source downloads.
 
 To reproduce with Node.js 20+ and the locked Python environment:
 
