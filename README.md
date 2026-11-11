@@ -316,7 +316,51 @@ shots remain separate; unequal observed shot counts are listed per configuration
 calibrated noise-model prediction.
 
 CHSH error bars assume independent shots within and across configurations and
-exclude systematic hardware errors. Identical histograms trigger a sampling
+exclude systematic hardware errors. Approximate standard errors remain available
+for compatibility but can vanish at parity boundaries and are not confidence
+intervals. Reports also recompute two-sided **95% Hoeffding confidence intervals**
+from counts. These conservative finite-sample bounds do not collapse when a
+correlator is +1 or -1; tiny samples may correctly yield the full physical range.
+No optional statistical dependency is needed.
+
+For observed parity mean E with N shots, the interval is E +/- r, intersected
+with [-1, 1], where `r = sqrt(2 * log(2 / 0.05) / N)`. For the signed sum S,
+`r = sqrt(2 * log(2 / 0.05) * sum(1 / N_i))`, intersected with [-4, 4].
+This follows the bounded independent-sum inequality
+`P(|S_hat - S_mean| >= t) <= 2 * exp(-t^2 / (2 * sum(1 / N_i)))`:
+each signed shot contributes a range width of `2 / N_i`. The S interval is
+computed directly, not by adding four marginal intervals. Individual correlator
+intervals are not a simultaneous 95% region. The method is conservative and may
+need more shots than sharper binomial methods to exclude the classical bound.
+
+JSON adds `confidence_interval`, `confidence_level` and `confidence_method` per
+correlator and `chsh_confidence_interval`, `chsh_confidence_level`,
+`chsh_confidence_method`, `chsh_confidence_assumption` for S. Bounds are ordered
+`[lower, upper]`; the fixed level is 0.95 and method is `hoeffding`. Supplied
+statistical summaries are always replaced by count-derived values.
+`observed_violation` means observed `abs(S) > 2`; the historical `violated` field
+retains exactly that meaning. `statistically_supported_violation` is true only
+when the entire S confidence interval lies above +2 or below -2.
+
+Inference assumes independent shots within and across configurations, a fixed
+outcome distribution within each configuration, and sample sizes, settings and
+signs fixed before observing outcomes. Optional stopping, outcome post-selection,
+drift and readout bias are not covered. Neither counts nor this interval verify
+locality, freedom of setting choice or fair sampling; **this is not a
+loophole-free Bell test**, including when the statistical flag is true.
+CHSH interpretation also assumes each repeated local label represents the same
+observable, even when angle metadata is unavailable.
+
+When angles are supplied, repeated local settings must agree: a in ab/ab',
+a' in a'b/a'b', b in ab/a'b, and b' in ab'/a'b'. Comparison uses absolute
+`1e-9` rad tolerance with no relative tolerance or periodic wrapping, because
+the recorded angle convention is not inferred. Contradictions fail before report
+artifacts are written. Missing or null angles remain supported for historical
+receipts; `chsh_settings_validation` is `complete`, `partial` or `unavailable`
+according to supplied angles. Consistency is a metadata check, not verification
+of physical settings.
+
+Identical histograms trigger a sampling
 review warning; they do not prove a seed error, and different histograms do not
 prove independence. For local experiments, sample all configurations together:
 

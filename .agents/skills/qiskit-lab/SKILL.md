@@ -68,6 +68,20 @@ Save a public JSON receipt with terminal `status`, boolean `hardware`, `backend`
 `sign_in_chsh` of +1 or -1; an odd number of signs must be negative. Preserve the
 measurement angles and theoretical values when known. Use `chsh_ideal` for the
 ideal reference; hardware noise is not a calibrated depolarizing prediction.
+Repeated local-setting angles must agree within absolute 1e-9 rad in the
+recorded convention; missing angles remain supported. Do not infer a period
+or silently reconcile contradictory settings.
+
+Reports retain approximate standard errors and add conservative two-sided 95%
+Hoeffding intervals, valid at parity boundaries and for small fixed samples.
+`violated` and `observed_violation` mean observed |S| > 2 only.
+`statistically_supported_violation` requires the entire S interval outside
+[-2, 2], conditional on independent shots, fixed per-configuration distributions,
+and preselected shot counts/settings/signs (no optional stopping/post-selection).
+Correlator intervals are marginal, not simultaneous; the S interval is derived
+directly using all four sample sizes. These quantify shot noise, not systematic
+errors, locality or fair sampling; never describe them as a loophole-free Bell
+test. See README for formulas and additive JSON fields.
 
 Generate the report with `scripts/dam/quantum report --input PUBLIC_RESULT.json`.
 This validates counts and recalculates statistics without contacting IBM or
