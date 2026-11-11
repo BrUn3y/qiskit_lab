@@ -26,6 +26,7 @@ def test_ci_covers_all_declared_python_minor_versions():
 def test_browser_smoke_is_separate_pinned_and_does_not_replace_tracking_coverage():
     workflow = yaml.safe_load((ROOT / ".github/workflows/container.yml").read_text())
     browser = workflow["jobs"]["report-browser"]
+    assert browser["runs-on"] == "ubuntu-24.04"
     assert browser["timeout-minutes"] == 10
     assert "strategy" not in browser
     assert not browser.get("continue-on-error")
@@ -33,7 +34,14 @@ def test_browser_smoke_is_separate_pinned_and_does_not_replace_tracking_coverage
     commands = [step.get("run", "") for step in browser["steps"]]
     assert "uv run --locked python tools/report-assets/create-fixtures.py" in commands
     assert "npm run test:browser" in commands
-    assert any("playwright install --with-deps chromium" in command for command in commands)
+    installs = {step.get("run"): step for step in browser["steps"] if "run" in step}
+    for command, budget in (
+        ("npm ci --ignore-scripts --no-audit --no-fund", 2),
+        ("npx --no-install playwright install-deps chromium", 3),
+        ("npx --no-install playwright install --only-shell chromium", 2),
+    ):
+        assert installs[command]["timeout-minutes"] == budget
+        assert installs[command]["working-directory"] == "tools/report-assets"
     package = json.loads((ROOT / "tools/report-assets/package.json").read_text())
     lock = json.loads((ROOT / "tools/report-assets/package-lock.json").read_text())
     version = package["devDependencies"]["@playwright/test"]

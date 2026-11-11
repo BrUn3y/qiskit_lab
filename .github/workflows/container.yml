@@ -21,7 +21,7 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm run build
   report-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -35,11 +35,18 @@ jobs:
       - run: uv sync --locked
       - name: Generate synthetic reports without IBM services
         run: uv run --locked python tools/report-assets/create-fixtures.py
-      - name: Install locked browser tooling and Chromium
+      - name: Install locked browser tooling
+        timeout-minutes: 2
         working-directory: tools/report-assets
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npx --no-install playwright install --with-deps chromium
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Chromium system dependencies
+        timeout-minutes: 3
+        working-directory: tools/report-assets
+        run: npx --no-install playwright install-deps chromium
+      - name: Install Chromium headless shell
+        timeout-minutes: 2
+        working-directory: tools/report-assets
+        run: npx --no-install playwright install --only-shell chromium
       - name: Smoke report interactions with external requests blocked
         working-directory: tools/report-assets
         run: npm run test:browser
