@@ -3,3 +3,6 @@
 # Public GitHub readers can resolve it only when this repository is public.
 kits:
   - url: https://github.com/BrUn3y/qiskit_lab
+    publisher:
+      name: BrUn3y
+      url: https://github.com/BrUn3y
