@@ -11,10 +11,10 @@ fermionic-sim = ["qiskit-fermions[ffsim]==0.4.1", "ffsim==0.0.86", "pyscf==2.15.
 
 [tool.uv]
 package = false
-# Keep the SDK ABI identical to the base lock; this is not a base SDK upgrade.
+# Keep the SDK ABI identical to the base lock; update both environments together.
 constraint-dependencies = [
     "qiskit==2.6.2",
-    "qiskit-ibm-runtime==0.51.0",
+    "qiskit-ibm-runtime==0.52.1",
     "qiskit-qasm3-import==0.6.0",
     "numpy==2.4.6",
     "scipy==1.17.0",

@@ -124,6 +124,19 @@ def test_qpu_transpiles_submits_once_and_saves_receipt(monkeypatch, tmp_path):
     assert (Path(result["artifacts"]) / "receipt.json").exists()
 
 
+def test_real_sampler_preserves_server_options_after_runtime_alias_change():
+    # Exercise the actual SDK constructor; mocked hardware tests cannot catch
+    # Runtime 0.52's top-level alias switching to the client-side primitive.
+    tags = ["qiskit-lab-dam", "synthetic-submission"]
+    sampler = quantum.SamplerV2(mode=GenericBackendV2(2, seed=42), options={
+        "max_execution_time": 300,
+        "environment": {"job_tags": tags},
+    })
+    assert isinstance(sampler.options, SamplerOptions)
+    assert sampler.options.max_execution_time == 300
+    assert sampler.options.environment.job_tags == tags
+
+
 def test_uncertain_submission_is_never_retried(monkeypatch, tmp_path):
     backend = GenericBackendV2(3, seed=42)
     backend.status = lambda: SimpleNamespace(operational=True)

@@ -38,6 +38,25 @@ stage makes the uv image visible to Dependabot's Docker parser, which examines
 `FROM` instructions rather than external-image `COPY --from` instructions.
 The project is installed non-editably with `--locked --no-dev --no-editable`.
 
+## IBM Runtime 0.52.1 compatibility
+
+The base and isolated optional environments both lock IBM Runtime 0.52.1.
+Update the optional project's matching constraint and lock whenever a base SDK
+dependency changes; the contract test rejects mismatched versions.
+
+Runtime 0.52 changed the top-level `SamplerV2` alias to the client-side primitive.
+Qiskit Lab explicitly imports the existing server-side primitive from the new
+public `qiskit_ibm_runtime.server_side` namespace, with the original top-level
+import retained for older Runtime versions. This preserves the current submission
+options, job tags, receipts and single-submission recovery contract. A real SDK
+constructor test checks the server-side options without submitting any job.
+
+The server-side primitive is deprecated. Moving to client-side execution remains
+a separate migration that must verify defaults, result handling and recovery;
+this dependency update does not claim that migration or live IBM validation.
+See [the upstream import change](https://github.com/Qiskit/qiskit-ibm-runtime/pull/3538)
+and [Runtime 0.52.1 release notes](https://github.com/Qiskit/qiskit-ibm-runtime/releases/tag/0.52.1).
+
 ## Dependabot
 
 `.github/dependabot.yml` requests weekly updates for `uv` (both `pyproject.toml`
