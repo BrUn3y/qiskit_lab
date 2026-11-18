@@ -139,6 +139,11 @@ versions, then run the base test/build/container checks. Commit both optional
 files. Never run an unreviewed broad root-lock upgrade to fix an optional
 resolver error. Updating bundled official skills is a separate reviewed change.
 
+When a base SDK dependency changes, update its matching optional constraint and
+regenerate the optional lock in the same PR. Both environments currently use
+IBM Runtime 0.52.1; changing only the root lock leaves the optional recipe out of
+sync and fails the base-contract check.
+
 No deployment changes are needed. The native DAM tracked-source export includes
 this project, documentation and smoke script; its installer still syncs only the
 base. The base wheel/container intentionally do not contain the optional lock

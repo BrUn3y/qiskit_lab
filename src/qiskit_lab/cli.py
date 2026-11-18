@@ -32,8 +32,16 @@ try:
     from qiskit import QuantumCircuit, qasm2, qasm3
     from qiskit.primitives import StatevectorSampler
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
+    from qiskit_ibm_runtime import QiskitRuntimeService
     from qiskit_ibm_runtime.accounts.exceptions import AccountNotFoundError
+
+    try:
+        # Runtime 0.52 repointed the top-level alias to a different execution API.
+        from qiskit_ibm_runtime.server_side import SamplerV2
+    except ModuleNotFoundError as error:
+        if error.name != "qiskit_ibm_runtime.server_side":
+            raise
+        from qiskit_ibm_runtime import SamplerV2
 
     from qiskit_lab.comparison import ComparisonError, compare_receipts, comparison_metadata
 except ImportError as error:
