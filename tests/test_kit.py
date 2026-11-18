@@ -40,7 +40,7 @@ def test_catalog_entry_matches_official_schema():
     jsonschema.Draft202012Validator(schema).validate(catalog)
     assert catalog["kits"] == [{
         "url": "https://github.com/BrUn3y/qiskit_lab",
-        "publisher": {"name": "BrUn3y", "url": "https://github.com/BrUn3y"},
+        "publisher": {"name": "Edgar Bruney", "url": "https://github.com/BrUn3y"},
     }]
 
 
