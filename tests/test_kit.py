@@ -38,7 +38,10 @@ def test_catalog_entry_matches_official_schema():
     schema = json.loads((ROOT / "dam/catalog.schema.json").read_text())
     catalog = yaml.safe_load((ROOT / "catalog.yaml").read_text())
     jsonschema.Draft202012Validator(schema).validate(catalog)
-    assert catalog["kits"] == [{"url": "https://github.com/BrUn3y/qiskit_lab"}]
+    assert catalog["kits"] == [{
+        "url": "https://github.com/BrUn3y/qiskit_lab",
+        "publisher": {"name": "BrUn3y", "url": "https://github.com/BrUn3y"},
+    }]
 
 
 def test_official_skills_are_discoverable_and_packaged_with_unmodified_resources(deploy, tmp_path):
