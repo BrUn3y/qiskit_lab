@@ -162,7 +162,8 @@ and an existing IBM Quantum account.
 Registration for everyone on the deployment is proposed in
 [dam-starter-kits PR #18](https://github.com/dam-agents/dam-starter-kits/pull/18).
 Once a maintainer merges it and the catalog refreshes, normally within about
-10 minutes, **Qiskit Lab** appears on the **Starter Kits** page as **By BrUn3y**.
+10 minutes, **Qiskit Lab** appears on the **Starter Kits** page as
+**By Edgar Bruney**.
 
 ### Operator-configured catalog
 

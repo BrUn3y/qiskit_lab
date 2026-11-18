@@ -11,7 +11,7 @@ The root `catalog.yaml` supplies the repository entry for a standalone catalog
 or a later curated-catalog contribution. Neither file publishes the kit or
 changes the repository's visibility.
 
-The catalog entry names `BrUn3y` as its publisher so DAM identifies it as a
+The catalog entry names `Edgar Bruney` as its publisher so DAM identifies it as a
 community contribution. Keep this metadata in the curated-catalog entry too;
 `kit.yaml` does not declare a publisher. Schema validation alone does not require
 this field because the same schema also accepts DAM's own kits.
