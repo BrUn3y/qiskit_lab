@@ -117,7 +117,7 @@ Existing DAM agents need a checkout update to receive these files; see
 
 The root [`kit.yaml`](kit.yaml) follows the
 [official DAM starter-kit format](https://github.com/dam-agents/dam-starter-kits).
-It seeds this repository at the catalog's resolved commit, installs the locked
+It seeds this repository at DAM's resolved commit, installs the locked
 Qiskit SDK environment, advertises `qiskit-lab` and the four official Qiskit skills,
 and declares the two-minute job-report schedule. It uses the platform's default model and
 harness selection, plus the IBM network hosts the SDK needs.
@@ -131,12 +131,40 @@ IBM access using the owner-only hidden Terminal prompt. The platform holds
 recurring schedules until onboarding completes; schedules the owner skips or
 disables stay that way. No Node.js or local DAM CLI is needed for native install.
 
-Native installation requires a catalog configured on the DAM deployment.
-Curated-catalog registration is proposed in
+### Import from link
+
+Install Qiskit Lab directly from its public GitHub repository:
+
+1. Open **Starter Kits** in [DAM](https://dam.res.ibm.com/) and click
+   **Import from link** beside the search.
+2. Paste `https://github.com/BrUn3y/qiskit_lab`, using the repository URL without
+   a branch, tag or folder suffix.
+3. Review the repository and resolved commit, install command, network access,
+   skills and reporting schedule, then click **Use this starter kit**. DAM creates
+   the agent from the exact commit shown.
+4. Complete the first-session onboarding: choose local simulation or configure
+   IBM Quantum access through the owner-only hidden Terminal prompt. A working
+   existing IBM Quantum account is reused.
+
+Importing a link needs no catalog registration or maintainer approval. It creates
+an agent for you without adding the kit to the **Starter Kits** list. Import the
+same repository link again to create another agent, or share it with a teammate
+so they can import their own. DAM shows imported kits as unreviewed by the
+platform. See the [official import guide](https://dam-agents.github.io/docs/guides/create-starter-kit/#import-from-link-just-for-you).
+
+The owner verified agent creation and the onboarding connection check on
+`dam.res.ibm.com` on November 18, 2026, using commit
+[`89ee370`](https://github.com/BrUn3y/qiskit_lab/commit/89ee370daabfbdfcf499d5255d69d1961d2386dd)
+and an existing IBM Quantum account.
+
+### Curated catalog
+
+Registration for everyone on the deployment is proposed in
 [dam-starter-kits PR #18](https://github.com/dam-agents/dam-starter-kits/pull/18).
-After registration and catalog refresh, select **Qiskit Lab** from DAM's
-**Starter Kits** page. The current `dam.res.ibm.com` deployment supports
-catalog-listed kits; use the CLI deployment below while registration is pending.
+Once a maintainer merges it and the catalog refreshes, normally within about
+10 minutes, **Qiskit Lab** appears on the **Starter Kits** page as **By BrUn3y**.
+
+### Operator-configured catalog
 
 An operator can instead configure this repository's root
 [`catalog.yaml`](catalog.yaml) as a standalone catalog:
@@ -158,6 +186,9 @@ The generated upstream schemas and their source commit are documented in
 [`dam/README.md`](dam/README.md).
 
 ## CLI deployment fallback
+
+Use this route when direct UI import is unavailable or you need the CLI
+deployment workflow.
 
 Requirements: Python 3.11–3.13 and [uv](https://docs.astral.sh/uv/). Deployment from your machine additionally requires Git, Node.js 20+ and **DAM CLI 0.2.24**. The root `pyproject.toml` declares the required Qiskit SDK packages; `uv.lock` pins the complete environment.
 
