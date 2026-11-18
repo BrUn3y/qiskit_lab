@@ -7,7 +7,7 @@
   },
   "devDependencies": {
     "@carbon/styles": "1.119.0",
-    "@playwright/test": "1.64.0",
-    "sass": "1.108.0"
+    "@playwright/test": "1.65.0",
+    "sass": "1.108.2"
   }
 }
