@@ -2,6 +2,8 @@
 
 [![DAM starter kit CI](https://github.com/BrUn3y/qiskit_lab/actions/workflows/dam.yml/badge.svg?branch=main)](https://github.com/BrUn3y/qiskit_lab/actions/workflows/dam.yml)
 
+[Explore the project website →](https://brun3y.github.io/qiskit_lab/)
+
 A quantum computing workspace in [DAM](https://dam.res.ibm.com/), connected to **IBM Quantum Platform** through Qiskit Runtime and `SamplerV2`.
 
 Qiskit Lab is a native Python package using the Qiskit SDK for circuit development, simulation, experiments, and hardware execution. DAM supplies the chat model and workspace. The application code lives in `src/qiskit_lab` and calls Qiskit directly.

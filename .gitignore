@@ -112,6 +112,7 @@ node_modules/
 temp_visualizations/
 *.png
 !docs/images/*.png
+!site/assets/*.png
 *.jpg
 *.jpeg
 
