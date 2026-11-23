@@ -171,12 +171,11 @@ p {
   align-items: center;
   gap: 11px;
 }
-.wordmark svg {
-  width: 33px;
-  height: 33px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.1;
+.qiskit-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .wordmark > span {
   font-size: 32px;
@@ -186,13 +185,6 @@ p {
 }
 .wordmark-light {
   font-weight: 400;
-}
-.wordmark-dot {
-  position: absolute;
-  top: 2px;
-  right: -11px;
-  font-size: 12px;
-  letter-spacing: 0;
 }
 .desktop-nav {
   display: flex;
@@ -1227,11 +1219,14 @@ details > p {
   gap: 30px;
 }
 .footer-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-weight: 600;
   letter-spacing: -1.5px;
   font-size: 33px;
 }
-.footer-wordmark > span {
+.footer-wordmark .wordmark-light {
   font-weight: 400;
 }
 .footer-brand p {
@@ -1399,9 +1394,9 @@ details > p {
   .wordmark > span {
     font-size: 28px;
   }
-  .wordmark svg {
-    width: 28px;
-    height: 28px;
+  .wordmark .qiskit-logo {
+    width: 36px;
+    height: 36px;
   }
   .header-end {
     gap: 15px;
@@ -1615,9 +1610,9 @@ details > p {
   .wordmark > span {
     font-size: 28px;
   }
-  .wordmark svg {
-    width: 28px;
-    height: 28px;
+  .wordmark .qiskit-logo {
+    width: 36px;
+    height: 36px;
   }
   .header-end {
     gap: 15px;
@@ -2079,9 +2074,9 @@ details > p {
   .wordmark > span {
     font-size: 25px;
   }
-  .wordmark svg {
-    width: 25px;
-    height: 25px;
+  .wordmark .qiskit-logo {
+    width: 32px;
+    height: 32px;
   }
   .hero h1 {
     font-size: 16.2vw;
