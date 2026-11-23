@@ -220,7 +220,7 @@ document.addEventListener("keydown", (event) => {
     menuButton.focus();
   }
 });
-window.matchMedia("(min-width: 641px)").addEventListener("change", (event) => {
+window.matchMedia("(min-width: 901px)").addEventListener("change", (event) => {
   if (event.matches) closeMenu();
 });
 

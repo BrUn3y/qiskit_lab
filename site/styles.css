@@ -216,13 +216,23 @@ p {
   align-items: center;
   gap: 24px;
 }
-.dam-brand {
+.technology-credits {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.technology-credit {
   display: flex;
   gap: 11px;
   align-items: center;
 }
-.dam-brand span {
+.technology-credit span {
   font-size: 8px;
+  white-space: nowrap;
+}
+.technology-credit img {
+  width: 48px;
+  height: 48px;
 }
 .dam-brand img {
   border: 1px solid #dddddc;
@@ -1243,8 +1253,25 @@ details > p {
 .footer-bottom a:hover {
   color: #a33a13;
 }
-.footer-dam {
+.footer-credits {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   margin-left: 20px;
+}
+.footer-credits a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.footer-credits .mono {
+  font-size: 7px;
+  white-space: nowrap;
+}
+.footer-credits img {
+  width: 64px;
+  height: 64px;
 }
 .footer-bottom {
   grid-column: 1/-1;
@@ -1318,8 +1345,14 @@ details > p {
   .header-end {
     gap: 18px;
   }
-  .dam-brand > span {
-    display: none;
+  .technology-credits {
+    gap: 14px;
+  }
+  .technology-credit {
+    gap: 8px;
+  }
+  .technology-credit span {
+    font-size: 7px;
   }
   .hero-grid {
     gap: 24px;
@@ -1387,21 +1420,27 @@ details > p {
     gap: 20px;
   }
   .desktop-nav {
-    gap: 16px;
-    font-size: 8px;
-    margin-right: 8px;
+    display: none;
+  }
+  .menu-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    background: none;
+    padding: 10px 0;
+    font-size: 9px;
+  }
+  .menu-toggle span {
+    font-size: 20px;
   }
   .wordmark > span {
     font-size: 28px;
   }
-  .wordmark .qiskit-logo {
-    width: 36px;
-    height: 36px;
-  }
   .header-end {
     gap: 15px;
   }
-  .dam-brand img {
+  .technology-credit img {
     width: 40px;
     height: 40px;
   }
@@ -1580,7 +1619,7 @@ details > p {
     order: 3;
     width: 100%;
   }
-  .footer-dam {
+  .footer-credits {
     margin-left: 0;
   }
   .closing-cta {
@@ -1602,7 +1641,12 @@ details > p {
     display: none;
   }
   .header {
-    height: 78px;
+    height: auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding-top: 17px;
+    padding-bottom: 14px;
   }
   .wordmark {
     gap: 9px;
@@ -1610,21 +1654,26 @@ details > p {
   .wordmark > span {
     font-size: 28px;
   }
-  .wordmark .qiskit-logo {
-    width: 36px;
-    height: 36px;
-  }
   .header-end {
-    gap: 15px;
+    display: contents;
+  }
+  .technology-credits {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    gap: 26px;
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
   }
   .header-end .repo-link {
     display: none;
   }
-  .dam-brand img {
-    width: 36px;
-    height: 36px;
+  .technology-credit img {
+    width: 32px;
+    height: 32px;
   }
   .menu-toggle {
+    grid-column: 2;
+    grid-row: 1;
     border: 0;
     background: none;
     display: flex;
@@ -2027,13 +2076,14 @@ details > p {
     gap: 23px;
     font-size: 8px;
   }
-  .footer-dam {
+  .footer-credits {
     grid-row: 1;
     grid-column: 2;
+    gap: 12px;
   }
-  .footer-dam img {
-    width: 54px;
-    height: 54px;
+  .footer-credits img {
+    width: 40px;
+    height: 40px;
   }
   .footer-bottom {
     margin-top: 0;
@@ -2073,10 +2123,6 @@ details > p {
   }
   .wordmark > span {
     font-size: 25px;
-  }
-  .wordmark .qiskit-logo {
-    width: 32px;
-    height: 32px;
   }
   .hero h1 {
     font-size: 16.2vw;
