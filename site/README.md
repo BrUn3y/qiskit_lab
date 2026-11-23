@@ -2,7 +2,9 @@
 
 An English project website inspired by the supplied editorial-grid reference.
 It uses static HTML, CSS, and JavaScript, with no build step or runtime dependencies.
-The original DAM logo was supplied by the repository owner. IBM Plex fonts are
+The DAM and Qiskit logos were supplied by the repository owner. The transparent
+Qiskit logo appears in the header and footer; the dark-background version is used
+for the favicon. IBM Plex fonts are
 self-hosted; their license is in `assets/PLEX-LICENSE.txt`.
 
 Preview from the repository root:

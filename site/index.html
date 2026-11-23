@@ -22,7 +22,7 @@
       property="og:image"
       content="https://brun3y.github.io/qiskit_lab/assets/social-preview.png"
     />
-    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="assets/qiskit-favicon.png" type="image/png" />
     <link
       rel="preload"
       href="assets/plex-mono-400.woff2"
@@ -46,14 +46,13 @@
       </div>
       <header class="header">
         <a class="wordmark" href="#top" aria-label="Qiskit Lab home"
-          ><svg viewBox="0 0 40 40" aria-hidden="true">
-            <circle cx="19" cy="19" r="13" />
-            <path d="M19 0v8M19 30v8M0 19h8M30 19h8M24 24l13 13" />
-            <circle cx="19" cy="19" r="4" /></svg
-          ><span
-            >qiskit<span class="wordmark-light">lab</span
-            ><span class="wordmark-dot">+</span></span
-          ></a
+          ><img
+            class="qiskit-logo"
+            src="assets/qiskit-logo.png"
+            alt="Qiskit SDK logo"
+            width="42"
+            height="42"
+          /><span>qiskit<span class="wordmark-light">lab</span></span></a
         >
         <nav class="desktop-nav mono" aria-label="Main navigation">
           <a href="#capabilities">The workspace</a
@@ -824,7 +823,16 @@ uv run --locked qiskit-lab execute --example bell --shots 256</code></pre>
       </main>
       <footer class="footer">
         <div class="footer-brand">
-          <a class="footer-wordmark" href="#top">qiskit<span>lab</span> ↗</a>
+          <a class="footer-wordmark" href="#top" aria-label="Qiskit Lab home"
+            ><img
+              class="qiskit-logo"
+              src="assets/qiskit-logo.png"
+              alt="Qiskit SDK logo"
+              width="42"
+              height="42"
+              loading="lazy"
+            /><span>qiskit<span class="wordmark-light">lab</span> ↗</span></a
+          >
           <p>A quantum workspace. An open question.</p>
         </div>
         <div class="footer-links mono">
