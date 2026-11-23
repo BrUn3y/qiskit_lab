@@ -31,6 +31,22 @@ jobs:
         with:
           persist-credentials: false
       - uses: actions/configure-pages@v5
+      - name: Version stylesheet and script URLs
+        run: |
+          python3 - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+
+          root = Path("site")
+          page = root / "index.html"
+          html = page.read_text()
+          for name in ("styles.css", "app.js"):
+              version = sha256((root / name).read_bytes()).hexdigest()[:16]
+              original = f'"{name}"'
+              assert original in html, f"Missing page reference: {name}"
+              html = html.replace(original, f'"{name}?v={version}"')
+          page.write_text(html)
+          PY
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

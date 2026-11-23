@@ -17,6 +17,13 @@ python3 -m http.server 4173 --directory site --bind 127.0.0.1
 Open <http://127.0.0.1:4173>. The `Publish project website` GitHub Actions
 workflow deploys this directory to <https://brun3y.github.io/qiskit_lab/> when
 website changes reach `main`. GitHub Pages must use the GitHub Actions source.
+Deployment adds content versions to the stylesheet and script URLs so browsers
+load the matching assets after an update.
+
+The DAM setup instructions follow the catalog workflow: **Starter kits → Research
+→ Qiskit Lab → Use this starter kit**. The owner-supplied animated walkthrough
+appears beneath the instructions. Its pause control uses a still frame; the site
+animation control and reduced-motion preferences also pause it.
 
 The playground illustrates fixed, ideal Bell, GHZ, and two-qubit Grover circuits.
 It uses analytically specified probabilities and `Math.random()` to draw 1,024

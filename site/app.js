@@ -152,6 +152,9 @@ document.querySelectorAll(".setup-tab").forEach((tab) =>
     });
     byId("setup-dam").hidden = name !== "dam";
     byId("setup-local").hidden = name !== "local";
+    const walkthrough = byId("setup-walkthrough");
+    if (walkthrough) walkthrough.hidden = name !== "dam";
+    updateWalkthrough();
     byId("start-requirements").textContent =
       name === "dam"
         ? "A DAM account. Your curiosity. That’s a start."
@@ -186,10 +189,7 @@ document.querySelectorAll("[data-copy]").forEach((button) =>
     const text = byId(button.dataset.copy).textContent.trim();
     try {
       await navigator.clipboard.writeText(text);
-      byId("copy-status").textContent =
-        button.dataset.copy === "repo-url"
-          ? "Repository URL copied."
-          : "Installation commands copied.";
+      byId("copy-status").textContent = "Installation commands copied.";
       button.textContent = "COPIED ✓";
       window.setTimeout(() => {
         button.textContent = "COPY ↗";
@@ -226,6 +226,31 @@ window.matchMedia("(min-width: 901px)").addEventListener("change", (event) => {
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let paused = reducedMotion.matches;
+let walkthroughPaused = false;
+function updateWalkthrough() {
+  const still = paused || walkthroughPaused;
+  const illustration = byId("walkthrough-image");
+  const controls = byId("walkthrough-toggle");
+  const walkthrough = byId("setup-walkthrough");
+  if (!illustration || !controls || !walkthrough) return;
+  const source =
+    still || walkthrough.hidden
+      ? illustration.dataset.poster
+      : illustration.dataset.animation;
+  if (illustration.getAttribute("src") !== source) illustration.src = source;
+  controls.setAttribute("aria-pressed", String(still));
+  controls.textContent = still ? "Play GIF ▷" : "Pause GIF Ⅱ";
+}
+byId("walkthrough-toggle")?.addEventListener("click", () => {
+  if (paused) {
+    paused = false;
+    walkthroughPaused = false;
+    updateMotion();
+  } else {
+    walkthroughPaused = !walkthroughPaused;
+    updateWalkthrough();
+  }
+});
 function updateMotion() {
   document.documentElement.classList.toggle("motion-paused", paused);
   byId("motion-toggle").setAttribute("aria-pressed", String(paused));
@@ -234,6 +259,7 @@ function updateMotion() {
     paused ? "Resume animations" : "Pause animations",
   );
   byId("motion-toggle").textContent = paused ? "▷" : "Ⅱ";
+  updateWalkthrough();
 }
 byId("motion-toggle").addEventListener("click", () => {
   paused = !paused;
