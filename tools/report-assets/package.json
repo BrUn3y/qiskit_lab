@@ -6,8 +6,8 @@
     "test:browser": "playwright test"
   },
   "devDependencies": {
-    "@carbon/styles": "1.119.0",
-    "@playwright/test": "1.65.0",
+    "@carbon/styles": "1.120.0",
+    "@playwright/test": "1.65.1",
     "sass": "1.108.2"
   }
 }
