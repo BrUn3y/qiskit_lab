@@ -22,7 +22,7 @@
       property="og:image"
       content="https://brun3y.github.io/qiskit_lab/assets/social-preview.png"
     />
-    <link rel="icon" href="assets/qiskit-favicon.png" type="image/png" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <link
       rel="preload"
       href="assets/plex-mono-400.woff2"
@@ -46,32 +46,39 @@
       </div>
       <header class="header">
         <a class="wordmark" href="#top" aria-label="Qiskit Lab home"
-          ><img
-            class="qiskit-logo"
-            src="assets/qiskit-logo.png"
-            alt="Qiskit SDK logo"
-            width="42"
-            height="42"
-          /><span>qiskit<span class="wordmark-light">lab</span></span></a
+          ><span>qiskit<span class="wordmark-light">lab</span></span></a
         >
         <nav class="desktop-nav mono" aria-label="Main navigation">
           <a href="#capabilities">The workspace</a
           ><a href="#playground">Playground</a><a href="#start">Get started</a>
         </nav>
         <div class="header-end">
+          <div class="technology-credits" aria-label="Project technologies">
+            <a
+              class="technology-credit dam-brand"
+              href="https://github.com/dam-agents/dam"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Visit DAM on GitHub (opens in a new tab)"
+              ><span class="mono">BUILT ON</span
+              ><img src="assets/dam-logo.png" alt="DAM" width="48" height="48"
+            /></a>
+            <a
+              class="technology-credit qiskit-brand"
+              href="https://github.com/Qiskit/qiskit"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Built with Qiskit SDK — view on GitHub (opens in a new tab)"
+              ><span class="mono">BUILT WITH</span
+              ><img
+                class="qiskit-logo"
+                src="assets/qiskit-logo.png"
+                alt="Qiskit SDK"
+                width="48"
+                height="48"
+            /></a>
+          </div>
           <a
-            class="dam-brand"
-            href="https://github.com/dam-agents/dam"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Visit DAM on GitHub (opens in a new tab)"
-            ><span class="mono">BUILT ON</span
-            ><img
-              src="assets/dam-logo.png"
-              alt="DAM"
-              width="48"
-              height="48" /></a
-          ><a
             class="repo-link"
             href="https://github.com/BrUn3y/qiskit_lab"
             target="_blank"
@@ -824,14 +831,7 @@ uv run --locked qiskit-lab execute --example bell --shots 256</code></pre>
       <footer class="footer">
         <div class="footer-brand">
           <a class="footer-wordmark" href="#top" aria-label="Qiskit Lab home"
-            ><img
-              class="qiskit-logo"
-              src="assets/qiskit-logo.png"
-              alt="Qiskit SDK logo"
-              width="42"
-              height="42"
-              loading="lazy"
-            /><span>qiskit<span class="wordmark-light">lab</span> ↗</span></a
+            ><span>qiskit<span class="wordmark-light">lab</span> ↗</span></a
           >
           <p>A quantum workspace. An open question.</p>
         </div>
@@ -841,17 +841,33 @@ uv run --locked qiskit-lab execute --example bell --shots 256</code></pre>
             >DOCUMENTATION ↗</a
           ><a href="https://github.com/dam-agents/dam">DAM ↗</a>
         </div>
-        <a
-          class="footer-dam"
-          href="https://github.com/dam-agents/dam"
-          aria-label="Visit DAM on GitHub"
-          ><img
-            src="assets/dam-logo.png"
-            width="64"
-            height="64"
-            alt="DAM"
-            loading="lazy"
-        /></a>
+        <div class="footer-credits" aria-label="Project technologies">
+          <a
+            class="footer-dam"
+            href="https://github.com/dam-agents/dam"
+            aria-label="Visit DAM on GitHub"
+            ><span class="mono">BUILT ON</span
+            ><img
+              src="assets/dam-logo.png"
+              width="64"
+              height="64"
+              alt="DAM"
+              loading="lazy"
+          /></a>
+          <a
+            class="footer-qiskit"
+            href="https://github.com/Qiskit/qiskit"
+            aria-label="Built with Qiskit SDK — view on GitHub"
+            ><span class="mono">BUILT WITH</span
+            ><img
+              class="qiskit-logo"
+              src="assets/qiskit-logo.png"
+              width="64"
+              height="64"
+              alt="Qiskit SDK"
+              loading="lazy"
+          /></a>
+        </div>
         <div class="footer-bottom mono">
           <span
             >© <span id="year">2026</span> QISKIT LAB · BY EDGAR BRUNEY</span
