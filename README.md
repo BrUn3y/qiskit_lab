@@ -64,6 +64,7 @@ Use `uv run --locked qiskit-lab --help` for commands and
 `uv run --locked qiskit-lab execute --help` for execution options. The
 `scripts/dam/quantum` wrapper runs the same CLI from the checkout. For development
 and the full offline validation workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Proposed priorities and scoped contributor tasks are in the [roadmap](ROADMAP.md).
 
 ## Qiskit Lab in DAM
 
